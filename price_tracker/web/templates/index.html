@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shopper - Configuration Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 20s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            position: relative;
+            z-index: 1;
+            animation: slideDown 0.8s ease-out;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            font-weight: 300;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: white;
+            padding: 50px;
+            border-radius: 25px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.25), 0 0 40px rgba(102, 126, 234, 0.15);
+            position: relative;
+            z-index: 1;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+            backdrop-filter: blur(10px);
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .section {
+            margin-bottom: 45px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        .section:nth-child(2) { animation-delay: 0.3s; }
+        .section:nth-child(3) { animation-delay: 0.4s; }
+        .section:nth-child(4) { animation-delay: 0.5s; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            position: relative;
+        }
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            animation: expandWidth 0.6s ease-out;
+        }
+        @keyframes expandWidth {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        .section-icon {
+            font-size: 2.5em;
+            margin-right: 18px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .section-header h2 {
+            color: #333;
+            font-size: 1.6em;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #444;
+            font-size: 0.98em;
+            letter-spacing: 0.3px;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="url"] {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e8e8e8;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #fafbfc;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15), inset 0 0 0 2px rgba(102, 126, 234, 0.05);
+            background: #fff;
+            transform: translateY(-2px);
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1;
+            min-width: 150px;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+            border: 2px solid transparent;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.45);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35);
+        }
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(245, 158, 11, 0.45);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
+        }
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(239, 68, 68, 0.45);
+        }
+        .product-item {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            border-left: 6px solid #667eea;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .product-item::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            transition: all 0.4s;
+        }
+        .product-item:hover {
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.15);
+            transform: translateX(6px) translateY(-2px);
+            border-left-color: #764ba2;
+        }
+        .product-item:hover::before {
+            right: -20%;
+            top: -20%;
+        }
+        .product-item .form-group {
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        .product-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .product-controls button {
+            flex: 1;
+            padding: 11px;
+            font-size: 0.9em;
+        }
+        .message {
+            padding: 18px;
+            border-radius: 14px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+            animation: slideInDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .message.success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border-color: #6ee7b7;
+        }
+        .message.error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
+        #products-list {
+            margin-bottom: 25px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px 30px;
+            color: #999;
+            border: 3px dashed #e0e0e0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+            transition: all 0.4s;
+        }
+        .empty-state:hover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+        }
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+            opacity: 0.6;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+        .footer-section {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
+            border-radius: 16px;
+            margin-top: 40px;
+            border: 2px solid #e0e4ff;
+        }
+        .footer-section p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.98em;
+            font-weight: 500;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            .header h1 {
+                font-size: 2.2em;
+            }
+            button {
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>�️ Smart Shopper</h1>
+        <p>Monitor prices across 19+ stores • Get alerts when prices drop</p>
+    </div>
+
+    <div class="container">
+        <div id="message"></div>
+
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">📧</span>
+                <h2>Email Configuration</h2>
+            </div>
+        <div class="form-group">
+            <label>💌 Gmail Address (Sender):</label>
+            <input type="email" id="sender_gmail" placeholder="your.email@gmail.com" value="{{config.get('sender_gmail', '')}}">
+        </div>
+        <div class="form-group">
+            <label>🔐 Gmail App Password (16 chars):</label>
+            <input type="password" id="gmail_password" placeholder="Your 16-character App Password" value="{{config.get('gmail_password', '')}}">
+        </div>
+        <div class="form-group">
+            <label>📬 Receiver Email:</label>
+            <input type="email" id="receiver_email" placeholder="where@to.send.alerts" value="{{config.get('receiver_email', '')}}">
+        </div>
+        <div class="button-group">
+            <button class="btn-primary" onclick="saveConfig()">💾 Save Email Settings</button>
+        </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">📦</span>
+                <h2>Products to Track</h2>
+            </div>
+        <div id="products-list"></div>
+        <div class="button-group">
+            <button class="btn-secondary" onclick="addProduct()">➕ Add Product</button>
+            <button class="btn-danger" onclick="clearAllProducts()">🗑️ Clear All Products</button>
+        </div>
+        </div>
+
+        <div class="footer-section">
+            <p>✅ Configuration saved automatically. Ready to start monitoring prices!</p>
+            <div class="button-group">
+                <button class="btn-danger" onclick="shutdownServer()">🛑 Close Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let products = {{products|safe}};
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            setTimeout(() => {
+                msg.textContent = '';
+                msg.className = '';
+            }, 3000);
+        }
+
+        function saveConfig() {
+            const config = {
+                sender_gmail: document.getElementById('sender_gmail').value,
+                gmail_password: document.getElementById('gmail_password').value,
+                receiver_email: document.getElementById('receiver_email').value
+            };
+
+            if (!config.sender_gmail || !config.gmail_password || !config.receiver_email) {
+                showMessage('❌ Please fill in all email fields', 'error');
+                return;
+            }
+
+            fetch('/config', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(r => r.json())
+            .then(r => {
+                if (r.status === 200) {
+                    showMessage('✅ Email configuration saved!', 'success');
+                } else {
+                    showMessage('❌ Error saving configuration', 'error');
+                }
+            })
+            .catch(() => showMessage('❌ Error saving configuration', 'error'));
+        }
+
+        function addProduct() {
+            products.push({url: '', warn_price: ''});
+            renderProducts();
+        }
+
+        function removeProduct(index) {
+            products.splice(index, 1);
+            renderProducts();
+        }
+
+        function saveProducts() {
+            const filteredProducts = products.filter(p => p.url && p.warn_price);
+            
+            if (filteredProducts.length === 0) {
+                showMessage('❌ Please add at least one product', 'error');
+                return;
+            }
+
+            const productsData = filteredProducts.map(p => ({
+                url: p.url,
+                warn_price: parseFloat(p.warn_price)
+            }));
+
+            fetch('/products', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(productsData)
+            })
+            .then(r => r.json())
+            .then(r => {
+                if (r.status === 200) {
+                    showMessage('✅ Products saved!', 'success');
+                } else {
+                    showMessage('❌ Error saving products', 'error');
+                }
+            })
+            .catch(() => showMessage('❌ Error saving products', 'error'));
+        }
+
+        function clearAllProducts() {
+            if (confirm('⚠️ Are you sure? This will delete all products.')) {
+                fetch('/products', {method: 'DELETE'})
+                .then(r => r.json())
+                .then(r => {
+                    if (r.status === 200) {
+                        products = [];
+                        renderProducts();
+                        showMessage('✅ All products deleted', 'success');
+                    }
+                })
+                .catch(() => showMessage('❌ Error deleting products', 'error'));
+            }
+        }
+
+        function renderProducts() {
+            const list = document.getElementById('products-list');
+            list.innerHTML = '';
+
+            if (products.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">�</div>
+                        <p>No products added yet. Click "Add Product" to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            products.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'product-item';
+                div.innerHTML = `
+                    <div class="form-group">
+                        <label>🔗 Product URL:</label>
+                        <input type="url" placeholder="https://amazon.com/product/..." 
+                            value="${p.url || ''}"
+                            onchange="products[${i}].url = this.value">
+                    </div>
+                    <div class="form-group">
+                        <label>💵 Alert Price (drops below this):</label>
+                        <input type="number" step="0.01" placeholder="99.99"
+                            value="${p.warn_price || ''}"
+                            onchange="products[${i}].warn_price = this.value">
+                    </div>
+                    <div class="product-controls">
+                        <button class="btn-danger" onclick="removeProduct(${i})">❌ Remove</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+
+            if (products.length > 0) {
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'btn-primary';
+                saveBtn.textContent = '💾 Save All Products';
+                saveBtn.onclick = saveProducts;
+                saveBtn.style.width = '100%';
+                saveBtn.style.marginTop = '15px';
+                list.appendChild(saveBtn);
+            }
+        }
+
+        function shutdownServer() {
+            if (confirm('Are you sure you want to shutdown the server?')) {
+                fetch('/shutdown', {method: 'POST'})
+                .then(() => {
+                    showMessage('👋 Server shutting down...', 'success');
+                    setTimeout(() => window.close(), 1000);
+                })
+                .catch(() => showMessage('❌ Error shutting down', 'error'));
+            }
+        }
+
+        // Initial render
+        renderProducts();
+    </script>
+</body>
+</html>

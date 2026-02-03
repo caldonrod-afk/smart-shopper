@@ -1,0 +1,8 @@
+{
+  "sender_gmail": "smartshopper202526@gmail.com",
+  "gmail_password": "cvayayivdiqunhiv",
+  "receiver_email": "smartshopper202526@gmail.com",
+  "check_interval_hours": 1,
+  "enable_notifications": true,
+  "database_path": "./data/price_tracker.db"
+}

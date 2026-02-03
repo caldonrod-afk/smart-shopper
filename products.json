@@ -1,0 +1,17 @@
+[
+  {
+    "url": "https://www.amazon.in/dp/B08FC5L3RG",
+    "warn_price": 45000,
+    "name": "PlayStation 5 Console"
+  },
+  {
+    "url": "https://www.flipkart.com/apple-iphone-15-pro-256gb/p/itm123456",
+    "warn_price": 80000,
+    "name": "iPhone 15 Pro 256GB"
+  },
+  {
+    "url": "https://www.amazon.in/dp/B08N5WRWNW",
+    "warn_price": 70000,
+    "name": "MacBook Air M1"
+  }
+]
