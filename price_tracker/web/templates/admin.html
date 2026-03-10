@@ -107,6 +107,26 @@
       <div class="stat-card-val" style="font-size:1.2rem;color:var(--green)">● Online</div>
       <div class="stat-card-sub">Flask app running</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Best Deal</div>
+      <div class="stat-card-val" id="s-best-deal" style="font-size:1.05rem;line-height:1.3">—</div>
+      <div class="stat-card-sub">Largest drop among tracked items</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Largest Drop</div>
+      <div class="stat-card-val" id="s-largest-drop" style="color:var(--green)">—</div>
+      <div class="stat-card-sub">Versus tracked peak price</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Most Volatile</div>
+      <div class="stat-card-val" id="s-most-volatile" style="font-size:1.05rem;line-height:1.3">—</div>
+      <div class="stat-card-sub">Highest price fluctuation</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Average Drop</div>
+      <div class="stat-card-val" id="s-average-drop" style="color:var(--accent)">—</div>
+      <div class="stat-card-sub">Across all tracked products</div>
+    </div>
   </div>
 
   <!-- TABS -->
@@ -222,6 +242,11 @@ async function loadAll() {
     document.getElementById('s-total').textContent  = dashR.stats.total_products;
     document.getElementById('s-drops').textContent  = dashR.stats.price_drops;
     document.getElementById('s-alerts').textContent = dashR.stats.recent_alerts;
+    const insights = dashR.insights || {};
+    document.getElementById('s-best-deal').textContent = insights.best_deal_product || '—';
+    document.getElementById('s-largest-drop').textContent = `${insights.largest_drop_pct || 0}%`;
+    document.getElementById('s-most-volatile').textContent = insights.most_volatile_product || '—';
+    document.getElementById('s-average-drop').textContent = `${insights.average_price_drop_pct || 0}%`;
   }
 
   if (prodR.success) {

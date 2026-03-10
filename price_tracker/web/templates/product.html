@@ -194,7 +194,7 @@
 
       <div class="action-row">
         <a href="{{ product.url }}" target="_blank" class="btn btn-primary">View on {{ product.website or 'Store' }} →</a>
-        <button class="btn btn-ghost" onclick="loadAIPrediction()">🤖 AI Prediction</button>
+        <button class="btn btn-ghost" onclick="loadAIPrediction()">Price Insights</button>
         <button class="btn btn-ghost" style="color:var(--red)" onclick="deleteProduct()">Remove</button>
       </div>
     </div>
@@ -205,7 +205,7 @@
     <div class="ai-icon">🤖</div>
     <div class="ai-body">
       <div class="ai-title">
-        AI Price Prediction
+        Buy Now vs Wait
         <span class="badge badge-accent">Beta</span>
       </div>
       <div class="ai-text" id="ai-text">Analysing price trends…</div>
@@ -346,7 +346,7 @@ async function loadAIPrediction() {
   panel.style.display = 'flex';
   document.getElementById('ai-text').textContent = 'Analysing price trends…';
 
-  const r = await fetch(`/api/products/${PRODUCT_ID}/predict`);
+  const r = await fetch(`/api/products/${PRODUCT_ID}/prediction`);
   const d = await r.json();
 
   if (!d.success) {
@@ -356,16 +356,24 @@ async function loadAIPrediction() {
   }
 
   const trendEmoji = d.trend === 'dropping' ? '📉' : d.trend === 'rising' ? '📈' : '➡️';
-  const trendMsg   = d.trend === 'dropping'
-    ? `<strong style="color:var(--green)">likely to drop further</strong>`
-    : d.trend === 'rising'
-    ? `<strong style="color:var(--red)">likely to rise</strong>`
-    : `<strong>likely to stay stable</strong>`;
+  const volatilityMsg = d.volatility === 'high'
+    ? 'price changes are frequent, so timing matters more than usual.'
+    : d.volatility === 'medium'
+    ? 'the product shows moderate price movement.'
+    : 'the price has been mostly stable.';
+  const dealMsg = d.deal_detected
+    ? `<br><span style="color:var(--green)">${d.deal_message}</span>`
+    : `<br>${d.deal_message}`;
+  const recommendationColor = d.recommendation === 'WAIT' ? 'var(--green)' : 'var(--gold)';
 
   document.getElementById('ai-text').innerHTML =
-    `Based on ${d.data_points} data points, this product is ${trendMsg} in the next 7 days. ` +
-    `${trendEmoji} Predicted price: <strong>${fmt(d.predicted_7d)}</strong> ` +
-    `(${d.trend === 'dropping' ? '▼' : '▲'} ${d.change_pct}% from current ${fmt(d.current)}).`;
+    `Based on ${d.data_points} historical records, the trend is <strong>${d.trend}</strong> ${trendEmoji}. ` +
+    `Current price: <strong>${fmt(d.current_price)}</strong>. ` +
+    `Predicted in 7 days: <strong>${fmt(d.predicted_7d)}</strong> ` +
+    `(${d.change_pct}% change). ` +
+    `Recommendation: <strong style="color:${recommendationColor}">${d.recommendation}</strong>. ` +
+    `Volatility is <strong>${d.volatility}</strong>, which means ${volatilityMsg}` +
+    dealMsg;
 
   // Animate confidence ring
   const conf = d.confidence;
@@ -373,7 +381,7 @@ async function loadAIPrediction() {
   const arc = document.getElementById('conf-arc');
   const circumference = 195;
   arc.style.strokeDashoffset = circumference - (circumference * conf / 100);
-  arc.style.stroke = d.trend === 'dropping' ? 'var(--green)' : d.trend === 'rising' ? 'var(--red)' : 'var(--gold)';
+  arc.style.stroke = d.recommendation === 'WAIT' ? 'var(--green)' : 'var(--gold)';
   arc.style.transition = 'stroke-dashoffset 1s ease, stroke .3s';
 }
 

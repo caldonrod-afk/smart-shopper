@@ -6,9 +6,12 @@ Single entry point replacing web_monitor.py + web_server.py
 import json
 import os
 import sqlite3
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, redirect, url_for
+
+from price_tracker.analytics import analyze_price_history, summarize_watchlist_insights
 
 # ── Real scraper (lazy import so app still starts if deps missing) ────────────
 try:
@@ -91,6 +94,65 @@ def load_config():
 def save_config(data):
     CFG_PATH.write_text(json.dumps(data, indent=2))
 
+
+def _get_price_history_lookup(conn, product_ids):
+    histories = defaultdict(list)
+    if not product_ids:
+        return histories
+
+    placeholders = ','.join('?' for _ in product_ids)
+    rows = conn.execute(
+        f'''
+            SELECT product_id, price
+            FROM price_history
+            WHERE product_id IN ({placeholders})
+            ORDER BY product_id ASC, timestamp ASC
+        ''',
+        product_ids,
+    ).fetchall()
+
+    for row in rows:
+        histories[row['product_id']].append(row['price'])
+
+    return histories
+
+
+def _fetch_product_history(conn, pid, days=30, fallback_mode='curve'):
+    since = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    rows = conn.execute(
+        'SELECT price, timestamp FROM price_history WHERE product_id=? AND timestamp>=? ORDER BY timestamp ASC',
+        (pid, since)
+    ).fetchall()
+    history = [{'price': r['price'], 'timestamp': r['timestamp']} for r in rows]
+    if history:
+        return history
+
+    prod = conn.execute(
+        'SELECT current_price, target_price FROM products WHERE id=?',
+        (pid,),
+    ).fetchone()
+    if not prod or prod['current_price'] is None:
+        return []
+
+    if fallback_mode == 'point':
+        return [{
+            'price': round(prod['current_price'], 2),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }]
+
+    if fallback_mode == 'curve':
+        import random
+
+        base = prod['current_price']
+        curve = []
+        for i in range(days, -1, -1):
+            ts = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d %H:%M')
+            noise = random.uniform(-0.03, 0.03)
+            curve.append({'price': round(base * (1 + noise + i * 0.002), 2), 'timestamp': ts})
+        return curve
+
+    return []
+
 # ── Pages ─────────────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
@@ -138,6 +200,7 @@ def api_add_product():
     url          = data.get('url', '').strip()
     name         = data.get('name', '').strip()
     target_price = data.get('target_price') or data.get('warn_price')
+    current_price = data.get('current_price')
     image_url    = data.get('image_url', '')
     website      = data.get('website', _detect_site(url))
 
@@ -146,16 +209,26 @@ def api_add_product():
 
     try:
         target_price = float(target_price)
+        if current_price:
+            current_price = float(current_price)
     except ValueError:
         return jsonify({'success': False, 'error': 'Invalid price'}), 400
 
     with get_db() as conn:
         try:
             conn.execute(
-                'INSERT INTO products (url, name, image_url, target_price, website) VALUES (?,?,?,?,?)',
-                (url, name or 'Unnamed Product', image_url, target_price, website)
+                'INSERT INTO products (url, name, image_url, target_price, current_price, website) VALUES (?,?,?,?,?,?)',
+                (url, name or 'Unnamed Product', image_url, target_price, current_price, website)
             )
             pid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            
+            # Add to price history if current_price provided
+            if current_price:
+                conn.execute(
+                    'INSERT INTO price_history (product_id, price, source) VALUES (?,?,?)',
+                    (pid, current_price, website)
+                )
+            
             product = dict(conn.execute('SELECT * FROM products WHERE id=?', (pid,)).fetchone())
             return jsonify({'success': True, 'product': product}), 201
         except sqlite3.IntegrityError:
@@ -170,26 +243,54 @@ def api_delete_product(pid):
 @app.route('/api/products/<int:pid>/history')
 def api_price_history(pid):
     days = int(request.args.get('days', 30))
-    since = datetime.now() - timedelta(days=days)
     with get_db() as conn:
-        rows = conn.execute(
-            'SELECT price, timestamp FROM price_history WHERE product_id=? AND timestamp>=? ORDER BY timestamp ASC',
-            (pid, since)
-        ).fetchall()
-    history = [{'price': r['price'], 'timestamp': r['timestamp']} for r in rows]
-    # If no history yet, create demo curve from current price
-    if not history:
-        with get_db() as conn:
-            prod = conn.execute('SELECT current_price, target_price FROM products WHERE id=?', (pid,)).fetchone()
-        if prod and prod['current_price']:
-            import random
-            base = prod['current_price']
-            history = []
-            for i in range(days, -1, -1):
-                ts = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d %H:%M')
-                noise = random.uniform(-0.03, 0.03)
-                history.append({'price': round(base * (1 + noise + i*0.002), 2), 'timestamp': ts})
+        history = _fetch_product_history(conn, pid, days=days, fallback_mode='curve')
     return jsonify({'success': True, 'history': history})
+
+
+@app.route('/api/watchlist/history')
+def api_watchlist_history():
+    days = int(request.args.get('days', 30))
+    with get_db() as conn:
+        products = conn.execute(
+            '''
+                SELECT id, name, website, current_price
+                FROM products
+                WHERE active=1
+                ORDER BY created_at DESC
+            '''
+        ).fetchall()
+
+        series = []
+        all_timestamps = set()
+
+        for product in products:
+            history = _fetch_product_history(conn, product['id'], days=days, fallback_mode='point')
+            if not history:
+                continue
+
+            for point in history:
+                all_timestamps.add(point['timestamp'])
+
+            series.append({
+                'product_id': product['id'],
+                'name': product['name'],
+                'website': product['website'],
+                'current_price': product['current_price'],
+                'points': history,
+            })
+
+    labels = sorted(all_timestamps)
+    for item in series:
+        price_by_timestamp = {point['timestamp']: point['price'] for point in item['points']}
+        item['data'] = [price_by_timestamp.get(label) for label in labels]
+
+    return jsonify({
+        'success': True,
+        'days': days,
+        'labels': labels,
+        'series': series,
+    })
 
 @app.route('/api/products/<int:pid>/price', methods=['POST'])
 def api_update_price(pid):
@@ -242,8 +343,12 @@ def api_search():
                 for r in results:
                     r['price_str'] = '₹' + f"{r['price']:,.0f}"
                 return jsonify({'success': True, 'results': results})
+            else:
+                print("⚠️ Scraper returned empty results, using demo data")
         except Exception as e:
             print(f"Scraper search error: {e}")
+    else:
+        print("⚠️ Scraper not available, using demo data")
 
     # Fallback demo
     return jsonify({'success': True, 'results': _demo_search_results(query), 'demo': True})
@@ -288,14 +393,21 @@ def api_refresh_product(pid):
 @app.route('/api/dashboard')
 def api_dashboard():
     with get_db() as conn:
-        total     = conn.execute('SELECT COUNT(*) FROM products WHERE active=1').fetchone()[0]
+        products  = conn.execute(
+            'SELECT id, name, current_price FROM products WHERE active=1 ORDER BY created_at DESC'
+        ).fetchall()
+        total     = len(products)
         drops     = conn.execute(
             'SELECT COUNT(*) FROM products WHERE active=1 AND current_price IS NOT NULL AND current_price <= target_price'
         ).fetchone()[0]
         alerts    = conn.execute(
             "SELECT COUNT(*) FROM alerts WHERE sent_at >= datetime('now','-7 days')"
         ).fetchone()[0]
-        tracking  = conn.execute('SELECT COUNT(*) FROM products WHERE active=1').fetchone()[0]
+        tracking  = total
+        histories = _get_price_history_lookup(conn, [product['id'] for product in products])
+
+    insights = summarize_watchlist_insights((dict(product) for product in products), histories)
+
     return jsonify({
         'success': True,
         'stats': {
@@ -303,7 +415,9 @@ def api_dashboard():
             'price_drops':    drops,
             'recent_alerts':  alerts,
             'tracking':       tracking
-        }
+        },
+        'insights': insights,
+        **insights,
     })
 
 @app.route('/api/config', methods=['GET', 'POST'])
@@ -330,42 +444,38 @@ def api_alerts():
     return jsonify({'success': True, 'alerts': [dict(r) for r in rows]})
 
 # ── Prediction ────────────────────────────────────────────────────────────────
+@app.route('/api/products/<int:pid>/prediction')
 @app.route('/api/products/<int:pid>/predict')
 def api_predict(pid):
-    """Linear-regression price prediction over stored history."""
+    """Linear-regression price prediction plus pricing insights."""
     with get_db() as conn:
+        product = conn.execute(
+            'SELECT id, name, current_price FROM products WHERE id=? AND active=1',
+            (pid,),
+        ).fetchone()
+        if not product:
+            return jsonify({'success': False, 'error': 'Product not found'}), 404
+
         rows = conn.execute(
             'SELECT price FROM price_history WHERE product_id=? ORDER BY timestamp ASC',
             (pid,)
         ).fetchall()
 
-    if len(rows) < 5:
-        return jsonify({'success': False, 'error': 'Need at least 5 price records for prediction. Keep tracking!'})
-
     try:
-        import numpy as np
-        prices = [r['price'] for r in rows]
-        x      = np.arange(len(prices), dtype=float)
-        slope, intercept = np.polyfit(x, prices, 1)
-
-        last     = prices[-1]
-        pred7    = round(float(intercept + slope * (len(prices) + 7)), 2)
-        trend    = 'dropping' if slope < -10 else ('rising' if slope > 10 else 'stable')
-        chg_pct  = round(abs(slope * 7) / last * 100, 1)
-        confidence = min(92, max(45, 50 + len(rows)))
-
+        analytics = analyze_price_history(
+            (row['price'] for row in rows),
+            current_price=product['current_price'],
+        )
         return jsonify({
-            'success':      True,
-            'trend':        trend,
-            'slope':        round(float(slope), 2),
-            'current':      last,
-            'predicted_7d': pred7,
-            'change_pct':   chg_pct,
-            'confidence':   confidence,
-            'data_points':  len(rows),
+            'success': True,
+            'product_id': product['id'],
+            'product_name': product['name'],
+            **analytics,
         })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/monitor/status')
 def api_monitor_status():

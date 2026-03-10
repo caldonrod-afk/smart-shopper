@@ -2,6 +2,7 @@
 {% block title %}My Watchlist — Smart Shopper{% endblock %}
 
 {% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 .page-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
 .page-header { margin-bottom: 28px; }
@@ -57,6 +58,53 @@
   font-size: .875rem;
 }
 .summary-pill b { font-family: 'Syne', sans-serif; font-size: 1.2rem; }
+
+.history-section { margin-bottom: 28px; }
+.section-title {
+  font-family:'Syne',sans-serif;
+  font-weight:800;
+  font-size:1.05rem;
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.history-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+}
+.history-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.history-meta { color: var(--text3); font-size: .8rem; }
+.history-tabs { display:flex; gap:4px; }
+.history-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: .82rem;
+  font-family:'Outfit',sans-serif;
+  cursor: pointer;
+  transition: all .15s;
+}
+.history-tab.active { background: var(--accent-g); border-color: var(--accent); color: var(--accent); }
+.history-wrap { position: relative; height: 320px; }
+.history-empty {
+  display:none;
+  text-align:center;
+  color:var(--text3);
+  padding:32px 12px 10px;
+}
 </style>
 {% endblock %}
 
@@ -74,6 +122,27 @@
     <button class="btn btn-primary" style="margin-left:auto" onclick="document.getElementById('add-modal').classList.add('open')">
       + Track Product
     </button>
+  </div>
+
+  <div class="history-section fade-up" id="watchlist-history-section" style="display:none">
+    <div class="section-title">Watchlist Price History</div>
+    <div class="history-card">
+      <div class="history-toolbar">
+        <div>
+          <div style="font-weight:600;font-size:.92rem">All tracked products in one chart</div>
+          <div class="history-meta" id="watchlist-chart-subtitle">Loading tracked price history…</div>
+        </div>
+        <div class="history-tabs">
+          <button class="history-tab" onclick="loadWatchlistHistory(7, this)">7D</button>
+          <button class="history-tab active" onclick="loadWatchlistHistory(30, this)">30D</button>
+          <button class="history-tab" onclick="loadWatchlistHistory(90, this)">90D</button>
+        </div>
+      </div>
+      <div class="history-wrap">
+        <canvas id="watchlist-history-chart"></canvas>
+      </div>
+      <div class="history-empty" id="watchlist-history-empty"></div>
+    </div>
   </div>
 
   <div class="watchlist-grid" id="watchlist-grid">
@@ -115,6 +184,10 @@
 
 {% block scripts %}
 <script>
+let watchlistChart = null;
+let activeHistoryDays = 30;
+const historyPalette = ['#ff6b35', '#ffd60a', '#2ec4b6', '#7bd389', '#ff8fab', '#5dade2', '#f28482', '#84a59d'];
+
 // Open modal animation
 document.getElementById('add-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
@@ -138,7 +211,10 @@ async function loadWatchlist() {
     document.getElementById('s-alerts').textContent = s.recent_alerts;
   }
 
-  if (!prodRes.success || !prodRes.products.length) return;
+  if (!prodRes.success || !prodRes.products.length) {
+    hideWatchlistHistory('Track products to compare their price history here.');
+    return;
+  }
 
   const grid = document.getElementById('watchlist-grid');
   grid.innerHTML = prodRes.products.map((p, i) => {
@@ -168,6 +244,130 @@ async function loadWatchlist() {
       </div>
     </div>`;
   }).join('');
+
+  await loadWatchlistHistory(activeHistoryDays);
+}
+
+function hideWatchlistHistory(message = '') {
+  const section = document.getElementById('watchlist-history-section');
+  const empty = document.getElementById('watchlist-history-empty');
+  section.style.display = 'none';
+  empty.textContent = message;
+  empty.style.display = message ? 'block' : 'none';
+  if (watchlistChart) {
+    watchlistChart.destroy();
+    watchlistChart = null;
+  }
+}
+
+function formatHistoryLabel(value, includeTime = false) {
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return value;
+  return dt.toLocaleString('en-IN', includeTime
+    ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+    : { month: 'short', day: 'numeric' });
+}
+
+async function loadWatchlistHistory(days = 30, tabEl = null) {
+  activeHistoryDays = days;
+  if (tabEl) {
+    document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+  } else {
+    document.querySelectorAll('.history-tab').forEach(t => {
+      t.classList.toggle('active', t.textContent === `${days}D`);
+    });
+  }
+
+  const section = document.getElementById('watchlist-history-section');
+  const empty = document.getElementById('watchlist-history-empty');
+  const subtitle = document.getElementById('watchlist-chart-subtitle');
+  subtitle.textContent = 'Loading tracked price history…';
+
+  const r = await fetch(`/api/watchlist/history?days=${days}`);
+  const d = await r.json();
+
+  if (!d.success || !d.series || !d.series.length || !d.labels.length) {
+    section.style.display = 'block';
+    empty.textContent = 'No shared price history is available for the current watchlist yet.';
+    empty.style.display = 'block';
+    subtitle.textContent = 'Waiting for tracked price updates';
+    if (watchlistChart) {
+      watchlistChart.destroy();
+      watchlistChart = null;
+    }
+    return;
+  }
+
+  section.style.display = 'block';
+  empty.style.display = 'none';
+
+  const totalPoints = d.series.reduce((sum, item) => sum + item.points.length, 0);
+  subtitle.textContent = `${d.series.length} products · ${totalPoints} price records across ${days} days`;
+
+  const ctx = document.getElementById('watchlist-history-chart').getContext('2d');
+  if (watchlistChart) watchlistChart.destroy();
+
+  watchlistChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.labels,
+      datasets: d.series.map((item, index) => ({
+        label: item.name,
+        data: item.data,
+        borderColor: historyPalette[index % historyPalette.length],
+        backgroundColor: historyPalette[index % historyPalette.length],
+        borderWidth: 2.2,
+        pointRadius: item.points.length <= 3 ? 4 : 2,
+        pointHoverRadius: 5,
+        tension: 0.35,
+        spanGaps: true,
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#d7d7e0',
+            usePointStyle: true,
+            boxWidth: 10,
+          }
+        },
+        tooltip: {
+          backgroundColor: '#181826',
+          borderColor: '#2a2a3f',
+          borderWidth: 1,
+          titleColor: '#a0a0b8',
+          bodyColor: '#eeeef5',
+          callbacks: {
+            title: items => formatHistoryLabel(items[0].label, true),
+            label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1f1f30' },
+          ticks: {
+            color: '#606078',
+            maxTicksLimit: 8,
+            callback: (_, index) => formatHistoryLabel(d.labels[index], days <= 7),
+          }
+        },
+        y: {
+          grid: { color: '#1f1f30' },
+          ticks: {
+            color: '#606078',
+            callback: value => '₹' + Number(value).toLocaleString('en-IN'),
+          }
+        }
+      }
+    }
+  });
 }
 
 async function addProduct() {

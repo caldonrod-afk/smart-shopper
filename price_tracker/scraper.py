@@ -143,7 +143,7 @@ def _serpapi_google_shopping(query: str, serpapi_key: str) -> list[dict]:
                 'title':   item.get('title', ''),
                 'price':   price,
                 'source':  item.get('source', 'Unknown'),
-                'link':    item.get('link', ''),
+                'link':    item.get('product_link', '') or item.get('link', ''),
                 'image':   item.get('thumbnail', ''),
                 'rating':  item.get('rating'),
                 'reviews': item.get('reviews'),

@@ -237,6 +237,14 @@
   border-color: rgba(255,107,53,.35);
   box-shadow: 0 4px 24px rgba(255,107,53,.07);
 }
+.pcard.best-price {
+  border: 2px solid var(--green);
+  background: linear-gradient(135deg, rgba(0,200,83,.03) 0%, rgba(0,200,83,.01) 100%);
+}
+.pcard.best-price:hover {
+  border-color: var(--green);
+  box-shadow: 0 4px 24px rgba(0,200,83,.15);
+}
 .pcard-img {
   background: #111120;
   display: flex;
@@ -534,29 +542,7 @@
         </div>
       </div>
 
-      <!-- Compare table (best deals per source) -->
-      <div id="compare-wrap" style="display:none;margin-bottom:18px">
-        <div class="compare-view">
-          <div class="compare-header">
-            <span class="syne fw-700">Price Comparison</span>
-            <span class="badge badge-green">✓ Live results</span>
-          </div>
-          <table class="compare-table">
-            <thead>
-              <tr>
-                <th>Store</th>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Rating</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="compare-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Full result cards -->
+      <!-- Product results -->
       <div class="product-list" id="search-list"></div>
     </div>
 
@@ -680,32 +666,13 @@ async function doSearch() {
     ]);
 
     allResults = searchRes.results || [];
-    const comparisons = compareRes.comparisons || [];
+
+    // Sort by price (cheapest first)
+    allResults.sort((a, b) => a.price - b.price);
 
     showView('search');
     document.getElementById('search-title').innerHTML =
       `Results for "${q}" <small>${allResults.length} found${searchRes.demo ? ' (demo data)' : ''}</small>`;
-
-    // Render compare table
-    if (comparisons.length) {
-      const minPrice = Math.min(...comparisons.map(c => c.price));
-      document.getElementById('compare-body').innerHTML = comparisons.map(c => {
-        const isBest = c.price === minPrice;
-        return `<tr class="${isBest ? 'row-best' : ''}">
-          <td><div style="display:flex;align-items:center;gap:8px">
-            <span class="dot ${dot(c.source)}"></span>
-            <strong>${c.source}</strong>
-          </div></td>
-          <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.title}</td>
-          <td><strong style="color:${isBest ? 'var(--green)' : 'var(--text)'};font-size:1rem">${fmt(c.price)}</strong>
-            ${isBest ? '<span class="badge badge-green" style="margin-left:6px">Best</span>' : ''}
-          </td>
-          <td>${c.rating ? `⭐ ${c.rating}` : '—'}</td>
-          <td><a href="${c.link}" target="_blank" onclick="event.stopPropagation()" class="btn btn-ghost btn-sm">View →</a></td>
-        </tr>`;
-      }).join('');
-      document.getElementById('compare-wrap').style.display = 'block';
-    }
 
     renderSearchResults(allResults);
   } catch (e) {
@@ -724,8 +691,18 @@ function renderSearchResults(results) {
       <div class="empty-title">No results found</div><p>Try a different search term</p></div>`;
     return;
   }
-  list.innerHTML = results.map((r, i) => `
-  <div class="pcard fade-up" style="animation-delay:${i * 0.05}s">
+  
+  const minPrice = Math.min(...results.map(r => r.price));
+  
+  // Store results globally for track button access
+  window.searchResults = results;
+  
+  list.innerHTML = results.map((r, i) => {
+    const isBest = r.price === minPrice;
+    const priceDiff = i > 0 ? r.price - minPrice : 0;
+    
+    return `
+  <div class="pcard fade-up ${isBest ? 'best-price' : ''}" style="animation-delay:${i * 0.05}s">
     <div class="pcard-img">
       ${r.image ? `<img src="${r.image}" loading="lazy" onerror="this.parentElement.innerHTML='📦'">` : '📦'}
     </div>
@@ -748,13 +725,53 @@ function renderSearchResults(results) {
     </div>
     <div class="pcard-action">
       <div class="best-price-label">Price</div>
-      <div class="best-price-amount">${r.price_str || fmt(r.price)}</div>
-      <button class="btn btn-primary btn-sm" onclick="trackFromSearch(event, '${escHtml(r.link)}','${escHtml(r.title)}',${r.price},'${escHtml(r.source)}')">
+      <div class="best-price-amount">${r.price_str || fmt(r.price)}${priceDiff > 0 ? ` <span style="color:var(--text3);font-size:.75rem">+${fmt(priceDiff)}</span>` : ''}</div>
+      ${isBest ? '<span class="badge badge-green" style="margin-bottom:8px">Best Price</span>' : ''}
+      <button class="btn btn-primary btn-sm" onclick="trackProduct(${i})">
         🔔 Track
       </button>
       <a href="${r.link}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">View →</a>
     </div>
-  </div>`).join('');
+  </div>`;
+  }).join('');
+}
+
+async function trackProduct(index) {
+  const r = window.searchResults[index];
+  console.log('Tracking product:', r);
+  
+  if (!r) {
+    alert("❌ Product not found");
+    return;
+  }
+  
+  if (!r.link || r.link === '#' || !r.price) {
+    alert("❌ Product data missing (link or price invalid)");
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/products', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        url: r.link,
+        name: r.title || 'Unnamed Product',
+        target_price: r.price * 0.9,
+        current_price: r.price,
+        image_url: r.image || ''
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("✅ Product added to watchlist!");
+    } else {
+      alert("❌ " + (data.error || "Failed to add product"));
+    }
+  } catch (err) {
+    alert("❌ Network error");
+    console.error(err);
+  }
 }
 
 function trackFromSearch(e, url, name, price, source) {
@@ -821,7 +838,6 @@ function showView(v) {
   document.getElementById('default-view').style.display = v === 'default' ? 'block' : 'none';
   document.getElementById('search-view').style.display  = v === 'search'  ? 'block' : 'none';
   if (v === 'default') {
-    document.getElementById('compare-wrap').style.display = 'none';
     document.getElementById('search-input').value = '';
   }
 }
