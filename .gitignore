@@ -1,4 +1,7 @@
 __pycache__/
 venv/
-config.json
 *.db
+
+# Secrets
+config.json
+.env

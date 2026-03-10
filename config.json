@@ -1,9 +1,0 @@
-{
-  "sender_gmail": "smartshopper202526@gmail.com",
-  "gmail_password": "qtgppsijvabqwldn",
-  "receiver_email": "smartshopper202526@gmail.com",
-  "check_interval": 5,
-  "enable_notifications": true,
-  "database_path": "./data/price_tracker.db",
-  "serpapi_key": "0b8a689e20eb31fdd7523c36f7026b45a9aeae87934ca0c8f06799d57abfa4c9"
-}
