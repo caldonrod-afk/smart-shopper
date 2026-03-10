@@ -76,9 +76,31 @@ python admin_monitor.py
 ## 📊 Monitoring System
 
 The system uses API-based scraping for better reliability:
-1. **Primary**: RapidAPI services
-2. **Secondary**: ScrapFly API  
-3. **Fallback**: Direct web scraping
+1. **Primary**: SerpAPI (Real Amazon data)
+2. **Secondary**: RapidAPI services  
+3. **Tertiary**: ScrapFly API
+4. **Fallback**: Direct web scraping
+
+### 🔑 SerpAPI Integration (NEW!)
+
+We've integrated **SerpAPI** for real Amazon product scraping:
+
+- **Sign up**: https://serpapi.com/
+- **Free tier**: 100 searches/month
+- **Setup guide**: See `SERPAPI_SETUP.md`
+
+**Quick Setup:**
+```bash
+# Get your API key from serpapi.com
+export SERPAPI_KEY="your_api_key_here"
+
+# Or edit price_tracker/api_config.py
+```
+
+**Test SerpAPI:**
+```bash
+python test_serpapi.py
+```
 
 ## 🛠️ Installation
 

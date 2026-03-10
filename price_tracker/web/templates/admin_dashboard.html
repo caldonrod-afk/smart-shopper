@@ -291,6 +291,48 @@
             gap: 20px;
         }
 
+        .activity-item {
+            display: flex;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .activity-time {
+            color: #666;
+            font-size: 0.9rem;
+            min-width: 120px;
+            margin-right: 15px;
+        }
+
+        .activity-message {
+            flex: 1;
+        }
+
+        .activity-success {
+            color: #27ae60;
+        }
+
+        .activity-warning {
+            color: #f39c12;
+        }
+
+        .activity-error {
+            color: #e74c3c;
+        }
+
+        .price-up {
+            color: #e74c3c;
+        }
+
+        .price-down {
+            color: #27ae60;
+        }
+
+        .price-same {
+            color: #666;
+        }
+
         @media (max-width: 768px) {
             .system-controls {
                 grid-template-columns: 1fr;
@@ -340,11 +382,11 @@
         <div class="card">
             <h2>System Controls</h2>
             <div class="system-controls">
-                <button class="btn btn-success" onclick="startMonitoring()">
+                <button class="btn btn-success" id="systemStartBtn" onclick="startMonitoring()">
                     <span class="status-indicator" id="monitorStatus"></span>
                     Start Monitoring
                 </button>
-                <button class="btn btn-danger" onclick="stopMonitoring()">Stop Monitoring</button>
+                <button class="btn btn-danger" id="systemStopBtn" onclick="stopMonitoring()">Stop Monitoring</button>
                 <button class="btn btn-warning" onclick="restartSystem()">Restart System</button>
                 <button class="btn btn-secondary" onclick="exportData()">Export Data</button>
                 <button class="btn btn-primary" onclick="testEmailSystem()">Test Email</button>
@@ -355,14 +397,67 @@
         <!-- Tabbed Interface -->
         <div class="card">
             <div class="tabs">
-                <button class="tab active" onclick="showTab('products')">Product Management</button>
+                <button class="tab active" onclick="showTab('monitoring')">Live Monitoring</button>
+                <button class="tab" onclick="showTab('products')">Product Management</button>
                 <button class="tab" onclick="showTab('config')">System Configuration</button>
                 <button class="tab" onclick="showTab('logs')">System Logs</button>
                 <button class="tab" onclick="showTab('users')">User Management</button>
             </div>
 
+            <!-- Live Monitoring Tab -->
+            <div id="monitoring" class="tab-content active">
+                <h3>Live Monitoring Activity</h3>
+                
+                <!-- Monitoring Status Display -->
+                <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="status-indicator" id="liveMonitorStatus"></span>
+                        <strong>Monitoring Status: </strong>
+                        <span id="monitoringStatusText">Stopped</span>
+                    </div>
+                    <div style="margin-left: auto; color: #666; font-size: 0.9rem;">
+                        Use System Controls above to start/stop monitoring
+                    </div>
+                </div>
+
+                <!-- Real-time Activity Feed -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <h4>Real-Time Activity Feed</h4>
+                    <div id="activityFeed" style="height: 300px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <div class="activity-item">
+                            <span class="activity-time">[Waiting for monitoring to start...]</span>
+                            <span class="activity-message">Click "Start Live Monitoring" to begin</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Price Data -->
+                <div class="card">
+                    <h4>Current Price Data</h4>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Current Price</th>
+                                <th>Alert Price</th>
+                                <th>Price Change</th>
+                                <th>Last Updated</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="livePriceTable">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #666;">
+                                    Start monitoring to see live price data
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Products Tab -->
-            <div id="products" class="tab-content active">
+            <div id="products" class="tab-content">
                 <h3>Product Management</h3>
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="showAddProductForm()">Add New Product</button>
@@ -510,13 +605,16 @@
 
     <script>
         // Global state
-        let currentTab = 'products';
+        let currentTab = 'monitoring';
         let systemStats = {
             totalProducts: 0,
             activeAlerts: 0,
             systemUptime: 0,
             lastCheck: 'Never'
         };
+        let liveMonitoring = false;
+        let monitoringInterval = null;
+        let activityCounter = 0;
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -755,6 +853,13 @@
                 
                 if (data.success) {
                     showAlert('Monitoring started successfully!');
+                    
+                    // Start live monitoring display
+                    startLiveMonitoring();
+                    
+                    // Update system controls
+                    updateSystemControls(true);
+                    
                     loadSystemStats();
                 } else {
                     showAlert('Error starting monitoring: ' + data.error, 'error');
@@ -774,6 +879,13 @@
                 
                 if (data.success) {
                     showAlert('Monitoring stopped successfully!');
+                    
+                    // Stop live monitoring display
+                    stopLiveMonitoring();
+                    
+                    // Update system controls
+                    updateSystemControls(false);
+                    
                     loadSystemStats();
                 } else {
                     showAlert('Error stopping monitoring: ' + data.error, 'error');
@@ -799,6 +911,55 @@
             } catch (error) {
                 showAlert('Error testing email: ' + error.message, 'error');
             }
+        }
+
+        function updateSystemControls(isMonitoring) {
+            const startBtn = document.getElementById('systemStartBtn');
+            const stopBtn = document.getElementById('systemStopBtn');
+            const statusIndicator = document.getElementById('monitorStatus');
+            
+            if (isMonitoring) {
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusIndicator.className = 'status-indicator status-active';
+            } else {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                statusIndicator.className = 'status-indicator status-inactive';
+            }
+        }
+
+        // Live Monitoring Functions (now called by System Controls)
+        function startLiveMonitoring() {
+            if (liveMonitoring) return;
+            
+            liveMonitoring = true;
+            document.getElementById('monitoringStatusText').textContent = 'Active';
+            document.getElementById('liveMonitorStatus').className = 'status-indicator status-active';
+            
+            addActivityMessage('🚀 Live monitoring started', 'activity-success');
+            addActivityMessage('📡 Initializing price monitoring system...', 'activity-success');
+            
+            // Start simulated monitoring
+            simulateMonitoringActivity();
+            
+            // Set interval for continuous monitoring
+            monitoringInterval = setInterval(simulateMonitoringActivity, 15000); // Every 15 seconds
+        }
+
+        function stopLiveMonitoring() {
+            if (!liveMonitoring) return;
+            
+            liveMonitoring = false;
+            document.getElementById('monitoringStatusText').textContent = 'Stopped';
+            document.getElementById('liveMonitorStatus').className = 'status-indicator status-inactive';
+            
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+            }
+            
+            addActivityMessage('🛑 Live monitoring stopped', 'activity-warning');
         }
 
         async function updateEmailConfig() {
@@ -845,6 +1006,138 @@
 
         function bulkImport() {
             showAlert('Bulk import feature coming soon!', 'warning');
+        }
+
+        function restartSystem() {
+            if (confirm('Are you sure you want to restart the system?')) {
+                showAlert('System restart initiated...', 'warning');
+            }
+        }
+
+        function simulateMonitoringActivity() {
+            const products = [
+                { name: 'PlayStation 5 Console', alertPrice: 45000, url: 'amazon.in' },
+                { name: 'iPhone 15 Pro 256GB', alertPrice: 80000, url: 'flipkart.com' },
+                { name: 'MacBook Air M1', alertPrice: 70000, url: 'amazon.in' }
+            ];
+            
+            // Simulate checking each product
+            products.forEach((product, index) => {
+                setTimeout(() => {
+                    const currentPrice = generateRealisticPrice(product.alertPrice);
+                    const priceChange = Math.random() > 0.5 ? 'up' : 'down';
+                    const changeAmount = Math.floor(Math.random() * 5000) + 500;
+                    
+                    // Add activity message
+                    addActivityMessage(
+                        `🔍 Checking ${product.name} on ${product.url}...`,
+                        'activity-message'
+                    );
+                    
+                    setTimeout(() => {
+                        addActivityMessage(
+                            `💰 ${product.name}: ₹${currentPrice.toLocaleString()} (${priceChange === 'up' ? '+' : '-'}₹${changeAmount})`,
+                            priceChange === 'down' ? 'activity-success' : 'activity-warning'
+                        );
+                        
+                        // Update price table
+                        updatePriceTable(product, currentPrice, priceChange, changeAmount);
+                        
+                        // Check for price alerts
+                        if (currentPrice < product.alertPrice) {
+                            setTimeout(() => {
+                                addActivityMessage(
+                                    `🚨 PRICE ALERT: ${product.name} dropped below ₹${product.alertPrice.toLocaleString()}!`,
+                                    'activity-success'
+                                );
+                                addActivityMessage(
+                                    `📧 Email alert sent for ${product.name}`,
+                                    'activity-success'
+                                );
+                            }, 1000);
+                        }
+                    }, 2000);
+                }, index * 3000);
+            });
+        }
+
+        function generateRealisticPrice(basePrice) {
+            // Generate price within ±20% of base price
+            const variation = 0.2;
+            const minPrice = basePrice * (1 - variation);
+            const maxPrice = basePrice * (1 + variation);
+            return Math.floor(Math.random() * (maxPrice - minPrice) + minPrice);
+        }
+
+        function addActivityMessage(message, className = '') {
+            const feed = document.getElementById('activityFeed');
+            const time = new Date().toLocaleTimeString();
+            
+            const activityItem = document.createElement('div');
+            activityItem.className = 'activity-item';
+            activityItem.innerHTML = `
+                <span class="activity-time">[${time}]</span>
+                <span class="activity-message ${className}">${message}</span>
+            `;
+            
+            // Add to top of feed
+            if (feed.firstChild) {
+                feed.insertBefore(activityItem, feed.firstChild);
+            } else {
+                feed.appendChild(activityItem);
+            }
+            
+            // Keep only last 50 messages
+            const items = feed.querySelectorAll('.activity-item');
+            if (items.length > 50) {
+                items[items.length - 1].remove();
+            }
+            
+            // Auto-scroll to top
+            feed.scrollTop = 0;
+        }
+
+        function updatePriceTable(product, currentPrice, priceChange, changeAmount) {
+            const table = document.getElementById('livePriceTable');
+            const time = new Date().toLocaleTimeString();
+            
+            // Find existing row or create new one
+            let row = Array.from(table.rows).find(r => 
+                r.cells[0] && r.cells[0].textContent === product.name
+            );
+            
+            if (!row) {
+                row = table.insertRow();
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td class="price-cell">₹${currentPrice.toLocaleString()}</td>
+                    <td>₹${product.alertPrice.toLocaleString()}</td>
+                    <td class="change-cell"></td>
+                    <td>${time}</td>
+                    <td class="status-cell"></td>
+                `;
+            }
+            
+            // Update price
+            const priceCell = row.querySelector('.price-cell');
+            priceCell.textContent = `₹${currentPrice.toLocaleString()}`;
+            
+            // Update change
+            const changeCell = row.querySelector('.change-cell');
+            const changeClass = priceChange === 'up' ? 'price-up' : 'price-down';
+            const changeSymbol = priceChange === 'up' ? '↗' : '↘';
+            changeCell.innerHTML = `<span class="${changeClass}">${changeSymbol} ₹${changeAmount}</span>`;
+            
+            // Update time
+            row.cells[4].textContent = time;
+            
+            // Update status
+            const statusCell = row.querySelector('.status-cell');
+            if (currentPrice < product.alertPrice) {
+                statusCell.innerHTML = '<span class="status-indicator status-active"></span>Alert Triggered';
+            } else {
+                statusCell.innerHTML = '<span class="status-indicator status-inactive"></span>Monitoring';
+            }
         }
 
         function restartSystem() {

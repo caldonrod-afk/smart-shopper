@@ -45,7 +45,8 @@ class APIScraper:
             'scrapfly': API_CONFIG.get('scrapfly', {}).get('key', ''),
             'scraperapi': API_CONFIG.get('scraperapi', {}).get('key', ''),
             'scrapingbee': API_CONFIG.get('scrapingbee', {}).get('key', ''),
-            'zenrows': API_CONFIG.get('zenrows', {}).get('key', '')
+            'zenrows': API_CONFIG.get('zenrows', {}).get('key', ''),
+            'serpapi': API_CONFIG.get('serpapi', {}).get('key', '')
         }
         
     def _create_session(self):
@@ -105,6 +106,137 @@ class APIScraper:
                     }
         except Exception as e:
             print(f"❌ RapidAPI Amazon error: {e}")
+        
+        return None
+    
+    def _use_serpapi_amazon(self, product_id, url):
+        """Use SerpAPI Amazon Product API for real scraping"""
+        try:
+            if not self.api_keys.get('serpapi'):
+                print("⚠️ SerpAPI key not found")
+                return None
+            
+            print("🔍 Using SerpAPI for Amazon product data...")
+            
+            # SerpAPI requires different parameters for Amazon product search
+            params = {
+                'api_key': self.api_keys['serpapi'],
+                'engine': 'amazon_product',  # Use amazon_product engine
+                'amazon_domain': 'amazon.in',
+                'asin': product_id
+            }
+            
+            print(f"📡 SerpAPI Request - ASIN: {product_id}")
+            
+            response = self.session.get(
+                'https://serpapi.com/search.json',
+                params=params,
+                timeout=30
+            )
+            
+            print(f"📡 SerpAPI Response Status: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Debug: Print response keys
+                print(f"🔍 SerpAPI Response Keys: {list(data.keys())}")
+                
+                # Check for errors
+                if 'error' in data:
+                    print(f"❌ SerpAPI Error: {data['error']}")
+                    return None
+                
+                # Try to find price in top-level data first
+                price_str = None
+                price_value = None
+                title = None
+                
+                # Check product_details for price
+                if 'product_details' in data:
+                    details = data.get('product_details', {})
+                    if isinstance(details, dict):
+                        # Look for price in product_details
+                        for key in ['Price', 'price', 'M.R.P.', 'MRP']:
+                            if key in details:
+                                price_str = details[key]
+                                print(f"   Found price in product_details['{key}']: {price_str}")
+                                break
+                
+                # Extract product information from SerpAPI response
+                # SerpAPI can return either 'product_result' or 'product_results'
+                product_result = data.get('product_result', {})
+                
+                if not product_result and 'product_results' in data:
+                    # If product_results exists, use the first result
+                    product_results = data.get('product_results', [])
+                    if isinstance(product_results, list) and len(product_results) > 0:
+                        product_result = product_results[0]
+                    elif isinstance(product_results, dict):
+                        product_result = product_results
+                
+                if product_result:
+                    # Get title
+                    title = product_result.get('title', 'Unknown Product')
+                    
+                    # Debug: Print all keys in product_result
+                    print(f"🔍 Product Result Keys: {list(product_result.keys())[:10]}")
+                    
+                    # Get price from product_result if not found yet
+                    if not price_str:
+                        # Try different price fields
+                        if 'price' in product_result:
+                            price_str = product_result['price']
+                            print(f"   Found 'price': {price_str}")
+                        elif 'prices' in product_result:
+                            prices = product_result['prices']
+                            print(f"   Found 'prices': {prices}")
+                            if isinstance(prices, list) and len(prices) > 0:
+                                price_str = prices[0].get('value') or prices[0].get('raw')
+                            elif isinstance(prices, dict):
+                                price_str = prices.get('current_price') or prices.get('value')
+                        elif 'buybox_winner' in product_result:
+                            buybox = product_result['buybox_winner']
+                            print(f"   Found 'buybox_winner': {buybox}")
+                            if isinstance(buybox, dict):
+                                price_str = buybox.get('price', {}).get('value') or buybox.get('price', {}).get('raw')
+                    
+                    print(f"🔍 SerpAPI Price String: {price_str}")
+                    
+                    # Extract numeric price
+                    if price_str:
+                        price_value = self._extract_price_from_text(str(price_str))
+                    
+                    if title and price_value:
+                        print(f"✅ SerpAPI Success: {title} - ₹{price_value}")
+                        return {
+                            'name': title,
+                            'price': price_value,
+                            'currency': 'INR',
+                            'source': 'SerpAPI Amazon',
+                            'rating': product_result.get('rating'),
+                            'reviews_count': product_result.get('reviews_count'),
+                            'availability': product_result.get('availability', {}).get('raw') if isinstance(product_result.get('availability'), dict) else product_result.get('availability')
+                        }
+                    else:
+                        print(f"⚠️ SerpAPI: Missing price or title data")
+                        print(f"   Title: {title}")
+                        print(f"   Price: {price_value}")
+                else:
+                    print(f"⚠️ SerpAPI: No product_result in response")
+                    print(f"   Available keys: {list(data.keys())}")
+            else:
+                print(f"❌ SerpAPI HTTP Error: {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data.get('error', response.text[:200])}")
+                except:
+                    print(f"   Response: {response.text[:200]}")
+                    
+        except Exception as e:
+            print(f"❌ SerpAPI error: {e}")
+            import traceback
+            traceback.print_exc()
         
         return None
     
@@ -283,7 +415,9 @@ class APIScraper:
         
         # Add API methods based on platform
         if platform == 'amazon':
+            # Prioritize SerpAPI for Amazon products
             methods.extend([
+                lambda: self._use_serpapi_amazon(product_id, url),
                 lambda: self._use_rapidapi_amazon(product_id),
                 lambda: self._use_scrapfly_api(url),
                 lambda: self._use_free_price_api(url)

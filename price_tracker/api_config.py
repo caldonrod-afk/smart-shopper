@@ -61,17 +61,18 @@ API_CONFIG = {
     },
     
     # ========================================================================
-    # SerpAPI Configuration (Google Shopping)
+    # SerpAPI Configuration (Amazon Product API)
     # ========================================================================
     # Sign up: https://serpapi.com/
     # Free tier: 100 searches/month
-    # Great for getting price from Google Shopping
+    # Great for getting real Amazon product data
     'serpapi': {
-        'key': os.environ.get('SERPAPI_KEY', ''),
-        'enabled': False,
-        'url': 'https://serpapi.com/search',
+        'key': '0b8a689e20eb31fdd7523c36f7026b45a9aeae87934ca0c8f06799d57abfa4c9',
+        'enabled': True,  # Enable SerpAPI by default
+        'url': 'https://serpapi.com/search.json',
         'params': {
-            'engine': 'google_shopping',
+            'engine': 'amazon',  # Use Amazon engine
+            'amazon_domain': 'amazon.in',  # Amazon India
             'gl': 'in',  # Country: India
             'hl': 'en'   # Language: English
         },
