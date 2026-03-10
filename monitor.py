@@ -17,7 +17,7 @@ from pathlib import Path
 # ── Allow running from project root ──────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).parent))
 
-from scraper import fetcher, _load_config
+from price_tracker.scraper import fetcher, _load_config
 
 # ── Optional mailer ───────────────────────────────────────────────────────────
 try:

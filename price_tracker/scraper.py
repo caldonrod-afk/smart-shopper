@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent   # smart-shopper directory
+BASE_DIR = Path(__file__).resolve().parent.parent  # price_tracker/ → project root
 DB_PATH  = BASE_DIR / 'data' / 'price_tracker.db'
 CFG_PATH = BASE_DIR / 'config.json'
 
