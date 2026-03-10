@@ -1,42 +1,33 @@
-# Smart Shopper — Upgraded
+# Smart Shopper
 
-## What's new
-- Single Flask app (`app.py`) replaces `web_monitor.py` + `web_server.py` + `admin_monitor.py`
-- Full dark UI: search, side-by-side compare table, price history chart, AI prediction
-- REST API (`/api/*`) for all data operations
-- Price history chart (Chart.js) on every product page
-- AI price prediction via linear regression on stored history
-- Admin dashboard with settings, all products, alert history
-- Secrets moved out of code — use `.env` or the Admin settings page
+Track product prices, get alerts, and predict future prices with AI.
 
-## Setup
+## Features
+
+- Search products via Google Shopping (SerpAPI)
+- Price history charts & AI predictions
+- Email alerts for price drops
+- Dark UI with side-by-side comparison
+- Admin dashboard
+
+## Quick Start
 
 ```bash
 pip install flask requests beautifulsoup4 numpy google-search-results
 
-# Copy and fill in your keys
 cp .env.example .env
+# Add your SerpAPI key (free: https://serpapi.com)
 
 python app.py
 # → http://127.0.0.1:5051
 ```
 
-## Getting prices (SerpAPI)
+## Configuration
 
-1. Sign up at https://serpapi.com (100 free searches/month)
-2. Go to Admin → Settings → paste your SerpAPI key → Save
-3. Search for any product — live Google Shopping results will appear
+Set keys via `.env` file or Admin → Settings:
+- `SERPAPI_KEY` - Google Shopping results (100 free/month)
+- Gmail credentials - Price drop alerts
 
-Without a SerpAPI key, the app runs with demo data so you can still see the full UI.
+## Security
 
-## Background monitoring
-
-The existing `api_monitor.py` / `realtime_monitor.py` still work unchanged.
-They call `POST /api/products/<id>/price` to update prices in the DB,
-which the new UI reads automatically.
-
-## ⚠️ Security fix
-The Gmail password in `config.json` was committed to GitHub.
-- Go to Google Account → Security → App Passwords → revoke the old one
-- Enter a new one in Admin → Settings (stored only in `config.json`, never hardcoded)
-- Add `config.json` to `.gitignore` or use the `.env` file instead
+Never commit `config.json` or `.env` with real credentials. Add them to `.gitignore`.
