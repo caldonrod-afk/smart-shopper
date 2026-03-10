@@ -1,191 +1,42 @@
-# 🛍️ Smart Shopper - Dual Dashboard Price Tracker
+# Smart Shopper — Upgraded
 
-A comprehensive price monitoring system for Indian e-commerce sites with separate customer and admin interfaces.
+## What's new
+- Single Flask app (`app.py`) replaces `web_monitor.py` + `web_server.py` + `admin_monitor.py`
+- Full dark UI: search, side-by-side compare table, price history chart, AI prediction
+- REST API (`/api/*`) for all data operations
+- Price history chart (Chart.js) on every product page
+- AI price prediction via linear regression on stored history
+- Admin dashboard with settings, all products, alert history
+- Secrets moved out of code — use `.env` or the Admin settings page
 
-## 🚀 Quick Start
+## Setup
 
-### Option 1: Use Launcher Scripts (Recommended)
 ```bash
-# Windows Batch
-START_DASHBOARDS.bat
+pip install flask requests beautifulsoup4 numpy google-search-results
 
-# Windows PowerShell  
-START_DASHBOARDS.ps1
+# Copy and fill in your keys
+cp .env.example .env
 
-# Cross-platform Python
-python start_dashboards.py
+python app.py
+# → http://127.0.0.1:5051
 ```
 
-### Option 2: Manual Start
-```bash
-# Terminal 1 - Customer Dashboard
-python web_monitor.py
+## Getting prices (SerpAPI)
 
-# Terminal 2 - Admin Dashboard
-python admin_monitor.py
-```
+1. Sign up at https://serpapi.com (100 free searches/month)
+2. Go to Admin → Settings → paste your SerpAPI key → Save
+3. Search for any product — live Google Shopping results will appear
 
-## 🌐 Access URLs
+Without a SerpAPI key, the app runs with demo data so you can still see the full UI.
 
-- **📱 Customer Dashboard**: http://127.0.0.1:5052
-- **🛡️ Admin Dashboard**: http://127.0.0.1:5053/admin
+## Background monitoring
 
-## 📧 Email Configuration
+The existing `api_monitor.py` / `realtime_monitor.py` still work unchanged.
+They call `POST /api/products/<id>/price` to update prices in the DB,
+which the new UI reads automatically.
 
-**Gmail Credentials:**
-- Email: `smartshopper202526@gmail.com`
-- App Password: `cvayayivdiqunhiv`
-
-## 🎯 Dashboard Features
-
-### 📱 Customer Dashboard
-- **Purpose**: End-user price monitoring
-- **Features**:
-  - Add products to monitor
-  - Set price alerts in Indian Rupees (₹)
-  - Configure receiver email
-  - View monitored products
-  - Simple, user-friendly interface
-
-### 🛡️ Admin Dashboard  
-- **Purpose**: System administration
-- **Features**:
-  - System statistics and monitoring
-  - Advanced product management
-  - Full system configuration
-  - User management framework
-  - System logs and diagnostics
-  - Email system testing
-  - Start/stop monitoring controls
-
-## 🔧 System Components
-
-### Core Files
-- `web_monitor.py` - Customer dashboard server
-- `admin_monitor.py` - Admin dashboard server  
-- `api_monitor.py` - Price monitoring engine
-- `config.json` - System configuration
-- `products.json` - Monitored products
-
-### Configuration
-- **Currency**: Indian Rupees (₹)
-- **Supported Sites**: Amazon India, Flipkart
-- **Check Interval**: Configurable (default: 5 minutes)
-- **Email Alerts**: Gmail SMTP
-
-## 📊 Monitoring System
-
-The system uses API-based scraping for better reliability:
-1. **Primary**: SerpAPI (Real Amazon data)
-2. **Secondary**: RapidAPI services  
-3. **Tertiary**: ScrapFly API
-4. **Fallback**: Direct web scraping
-
-### 🔑 SerpAPI Integration (NEW!)
-
-We've integrated **SerpAPI** for real Amazon product scraping:
-
-- **Sign up**: https://serpapi.com/
-- **Free tier**: 100 searches/month
-- **Setup guide**: See `SERPAPI_SETUP.md`
-
-**Quick Setup:**
-```bash
-# Get your API key from serpapi.com
-export SERPAPI_KEY="your_api_key_here"
-
-# Or edit price_tracker/api_config.py
-```
-
-**Test SerpAPI:**
-```bash
-python test_serpapi.py
-```
-
-## 🛠️ Installation
-
-1. **Clone/Download** the project
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run launcher**:
-   ```bash
-   START_DASHBOARDS.bat
-   ```
-
-## 📁 Project Structure
-
-```
-smart-shopper/
-├── price_tracker/           # Core monitoring system
-│   ├── web/                # Web interface files
-│   │   └── templates/      # HTML templates
-│   ├── mailer.py          # Email system
-│   ├── api_scraper.py     # API-based scraping
-│   └── constants.py       # Configuration paths
-├── web_monitor.py         # Customer dashboard
-├── admin_monitor.py       # Admin dashboard
-├── api_monitor.py         # Monitoring engine
-├── config.json           # System configuration
-├── products.json         # Monitored products
-└── START_DASHBOARDS.*    # Launcher scripts
-```
-
-## 🔐 Security Notes
-
-⚠️ **Development Mode**: Current implementation is for development/demo.
-
-For production:
-- Implement proper authentication
-- Use HTTPS encryption
-- Add input validation
-- Enable rate limiting
-- Add session management
-
-## 📖 Documentation
-
-- `DASHBOARD_README.md` - Detailed dashboard documentation
-- `requirements.txt` - Python dependencies
-- `setup.py` - Package configuration
-
-## 🎯 Usage Examples
-
-### Adding Products
-1. Open customer dashboard
-2. Enter product URL (Amazon India/Flipkart)
-3. Set product name and alert price in ₹
-4. Click "Add Product"
-
-### Admin Management
-1. Open admin dashboard
-2. View system statistics
-3. Manage products with advanced options
-4. Configure system settings
-5. Monitor system logs
-
-## 🚨 Troubleshooting
-
-### Common Issues
-1. **Port conflicts**: Ensure ports 5052 and 5053 are available
-2. **Email issues**: Verify Gmail app password
-3. **Config errors**: Check JSON syntax in config files
-
-### Logs
-- **Price alerts**: `~/price-tracker/price_alerts.log`
-- **System logs**: Available in admin dashboard
-
-## 🔄 Updates
-
-The system automatically synchronizes configuration between dashboards. Changes made in either interface are reflected across the system.
-
-## 💡 Tips
-
-- Use the admin dashboard for system management
-- Customer dashboard is perfect for end users
-- Test email system through admin dashboard
-- Monitor system health via admin statistics
-
----
-
-**Happy Shopping! 🛍️**
+## ⚠️ Security fix
+The Gmail password in `config.json` was committed to GitHub.
+- Go to Google Account → Security → App Passwords → revoke the old one
+- Enter a new one in Admin → Settings (stored only in `config.json`, never hardcoded)
+- Add `config.json` to `.gitignore` or use the `.env` file instead

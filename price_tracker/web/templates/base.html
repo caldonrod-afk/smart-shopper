@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Smart Shopper{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design Tokens ─────────────────────────────────────────── */
+    :root {
+      --bg:       #080810;
+      --surface:  #0f0f1a;
+      --card:     #13131f;
+      --card2:    #181826;
+      --border:   #1f1f30;
+      --border2:  #2a2a3f;
+      --accent:   #ff6b35;
+      --accent-d: #cc5228;
+      --accent-g: rgba(255,107,53,0.12);
+      --gold:     #ffd60a;
+      --green:    #00e5a0;
+      --green-g:  rgba(0,229,160,0.1);
+      --red:      #ff4d6d;
+      --blue:     #3b82f6;
+      --text:     #eeeef5;
+      --text2:    #a0a0b8;
+      --text3:    #606078;
+      --amz:      #ff9900;
+      --flip:     #2563eb;
+      --meer:     #d4002a;
+      --r:        12px;
+      --r-lg:     18px;
+      --shadow:   0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font-family: inherit; }
+    img { max-width: 100%; }
+
+    /* ── Scrollbar ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── NAV ────────────────────────────────────────────────────── */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 62px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(8,8,16,0.88);
+      backdrop-filter: blur(20px);
+      z-index: 200;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-pulse {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%,100%{transform:scale(1);opacity:1}
+      50%{transform:scale(1.5);opacity:.6}
+    }
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      list-style: none;
+    }
+    .nav-links a {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--text2);
+      transition: color .2s, background .2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text);
+      background: var(--surface);
+    }
+    .nav-links a.active { color: var(--accent); }
+    .nav-right { display: flex; gap: 10px; align-items: center; }
+
+    /* ── Buttons ─────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 20px;
+      border-radius: var(--r);
+      font-size: .875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn:hover { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+    }
+    .btn-ghost:hover { border-color: var(--text3); color: var(--text); }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-sm { padding: 6px 14px; font-size: .8rem; }
+    .btn-icon { padding: 8px; width: 36px; height: 36px; justify-content: center; }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 22px;
+    }
+    .card:hover { border-color: var(--border2); }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .badge-accent  { background: var(--accent-g); color: var(--accent); border: 1px solid rgba(255,107,53,.2); }
+    .badge-green   { background: var(--green-g); color: var(--green); border: 1px solid rgba(0,229,160,.2); }
+    .badge-gold    { background: rgba(255,214,10,.1); color: var(--gold); border: 1px solid rgba(255,214,10,.2); }
+    .badge-red     { background: rgba(255,77,109,.1); color: var(--red); border: 1px solid rgba(255,77,109,.2); }
+    .badge-muted   { background: var(--surface); color: var(--text3); border: 1px solid var(--border); }
+
+    /* ── Source dots ─────────────────────────────────────────────── */
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-amz  { background: var(--amz); }
+    .dot-flip { background: var(--flip); }
+    .dot-meer { background: var(--meer); }
+    .dot-other { background: var(--text3); }
+
+    /* ── Price pill ──────────────────────────────────────────────── */
+    .price-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .85rem;
+      transition: border-color .2s;
+    }
+    .price-pill.best { border-color: var(--green); background: var(--green-g); }
+    .price-pill .site-label { color: var(--text3); font-size: .76rem; }
+    .price-pill .amount { font-weight: 700; }
+    .price-pill.best .amount { color: var(--green); }
+
+    /* ── Inputs ──────────────────────────────────────────────────── */
+    .input {
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: .9rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input:focus { border-color: var(--accent); }
+    .input::placeholder { color: var(--text3); }
+
+    /* ── Utilities ───────────────────────────────────────────────── */
+    .text-accent { color: var(--accent); }
+    .text-green  { color: var(--green); }
+    .text-red    { color: var(--red); }
+    .text-muted  { color: var(--text2); }
+    .text-faint  { color: var(--text3); }
+    .syne        { font-family: 'Syne', sans-serif; }
+    .fw-700      { font-weight: 700; }
+    .fw-800      { font-weight: 800; }
+
+    /* ── Toast ───────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 13px 20px;
+      font-size: .875rem;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      z-index: 999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.34,1.56,.64,1);
+      max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error   { border-color: var(--red);   color: var(--red);   }
+
+    /* ── Loading spinner ─────────────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2.5px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Animations ──────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp .4s ease both; }
+    .fade-up-1 { animation-delay: .07s; }
+    .fade-up-2 { animation-delay: .14s; }
+    .fade-up-3 { animation-delay: .21s; }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .nav { padding: 0 16px; }
+      .nav-links { display: none; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="logo">
+    <span class="logo-pulse"></span>
+    SmartShopper
+  </a>
+  <ul class="nav-links">
+    <li><a href="/" id="nav-home">Compare</a></li>
+    <li><a href="/watchlist" id="nav-watchlist">Watchlist</a></li>
+    <li><a href="/admin" id="nav-admin">Admin</a></li>
+  </ul>
+  <div class="nav-right">
+    <span id="nav-status" class="badge badge-muted" style="font-size:.72rem">⬤ Loading…</span>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<div id="toast"></div>
+
+<script>
+// ── Active nav link ────────────────────────────────────────────
+const path = window.location.pathname;
+if (path === '/')         document.getElementById('nav-home')?.classList.add('active');
+if (path.startsWith('/watchlist')) document.getElementById('nav-watchlist')?.classList.add('active');
+if (path.startsWith('/admin'))     document.getElementById('nav-admin')?.classList.add('active');
+
+// ── Toast helper ───────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── Dashboard status ───────────────────────────────────────────
+async function loadNavStatus() {
+  try {
+    const r = await fetch('/api/dashboard');
+    const d = await r.json();
+    if (d.success) {
+      const s = d.stats;
+      const el = document.getElementById('nav-status');
+      el.className = 'badge badge-accent';
+      el.textContent = `⬤ ${s.total_products} tracked`;
+    }
+  } catch {}
+}
+loadNavStatus();
+
+// ── Shared helpers ─────────────────────────────────────────────
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return '₹' + Number(n).toLocaleString('en-IN');
+}
+function dot(source) {
+  if (!source) return 'dot-other';
+  const s = source.toLowerCase();
+  if (s.includes('amazon'))   return 'dot-amz';
+  if (s.includes('flipkart')) return 'dot-flip';
+  if (s.includes('meesho'))   return 'dot-meer';
+  return 'dot-other';
+}
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

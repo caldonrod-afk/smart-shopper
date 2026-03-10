@@ -1,5 +1,8 @@
 import os
+from pathlib import Path
 
-SAVE_PATH = os.path.expanduser("~") + '/price-tracker'
-CONFIG_PATH = SAVE_PATH + '/config.json'
-PRODUCTS_PATH = SAVE_PATH + '/products.json'
+# Use the smart-shopper directory for config files
+BASE_DIR = Path(__file__).resolve().parent.parent
+SAVE_PATH = str(BASE_DIR)
+CONFIG_PATH = str(BASE_DIR / 'config.json')
+PRODUCTS_PATH = str(BASE_DIR / 'products.json')

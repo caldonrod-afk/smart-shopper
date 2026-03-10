@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}My Watchlist — Smart Shopper{% endblock %}
+
+{% block head %}
+<style>
+.page-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
+.page-header { margin-bottom: 28px; }
+.page-header h1 { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; letter-spacing:-.03em; }
+.page-header p  { color:var(--text2); margin-top:6px; }
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.wcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color .22s, transform .2s;
+}
+.wcard:hover { border-color: rgba(255,107,53,.35); transform: translateY(-2px); }
+.wcard-name  { font-weight: 600; font-size: .92rem; margin-bottom: 10px; line-height: 1.35; }
+.wcard-site  { margin-bottom: 14px; }
+.wcard-prices { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+.wcard-current { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+.wcard-change { font-size: .78rem; }
+.wcard-change.down { color: var(--green); }
+.wcard-change.up   { color: var(--red); }
+.wcard-alert { font-size: .78rem; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+.alert-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.wcard-footer { display: flex; gap: 8px; margin-top: 14px; }
+
+.empty-state {
+  text-align:center;padding:80px 20px;color:var(--text3);
+  grid-column: 1/-1;
+}
+.empty-icon { font-size:3.5rem;margin-bottom:16px; }
+.empty-title { font-family:'Syne',sans-serif;font-size:1.2rem;color:var(--text2);margin-bottom:8px; }
+
+.summary-bar {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.summary-pill {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .875rem;
+}
+.summary-pill b { font-family: 'Syne', sans-serif; font-size: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header fade-up">
+    <h1>My Watchlist</h1>
+    <p>Products you're tracking — get alerted the moment prices drop.</p>
+  </div>
+
+  <div class="summary-bar fade-up" id="summary-bar">
+    <div class="summary-pill"><b id="s-total">—</b> <span class="text-muted">products tracked</span></div>
+    <div class="summary-pill"><b id="s-drops" style="color:var(--green)">—</b> <span class="text-muted">price drops</span></div>
+    <div class="summary-pill"><b id="s-alerts">—</b> <span class="text-muted">alerts this week</span></div>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="document.getElementById('add-modal').classList.add('open')">
+      + Track Product
+    </button>
+  </div>
+
+  <div class="watchlist-grid" id="watchlist-grid">
+    <div class="empty-state">
+      <div class="empty-icon">❤️</div>
+      <div class="empty-title">Your watchlist is empty</div>
+      <p style="margin-bottom:16px">Search for products and click Track to add them here.</p>
+      <a href="/" class="btn btn-primary">Start Searching →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MODAL (same as index) -->
+<div class="modal-overlay" id="add-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s">
+  <div style="background:var(--card2);border:1px solid var(--border2);border-radius:var(--r-lg);padding:28px;width:100%;max-width:480px;transform:scale(.95) translateY(10px);transition:transform .25s cubic-bezier(.34,1.4,.64,1)" id="modal-inner">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between">
+      Track a Product
+      <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.2rem" onclick="document.getElementById('add-modal').classList.remove('open')">✕</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.82rem;color:var(--text2);margin-bottom:6px;display:block;font-weight:500">Product URL</label>
+      <input class="input" id="m-url" type="url" placeholder="https://www.amazon.in/dp/…">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.82rem;color:var(--text2);margin-bottom:6px;display:block;font-weight:500">Product Name</label>
+      <input class="input" id="m-name" type="text" placeholder="e.g. Samsung Galaxy S24">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:.82rem;color:var(--text2);margin-bottom:6px;display:block;font-weight:500">Alert price (₹)</label>
+      <input class="input" id="m-price" type="number" placeholder="e.g. 55000">
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="addProduct()">🔔 Start Tracking</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('add-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Open modal animation
+document.getElementById('add-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+document.getElementById('add-modal').addEventListener('transitionend', function() {
+  const inner = document.getElementById('modal-inner');
+  if (this.classList.contains('open')) inner.style.transform = 'scale(1) translateY(0)';
+  else inner.style.transform = 'scale(.95) translateY(10px)';
+});
+
+async function loadWatchlist() {
+  const [prodRes, dashRes] = await Promise.all([
+    fetch('/api/products').then(r => r.json()),
+    fetch('/api/dashboard').then(r => r.json()),
+  ]);
+
+  if (dashRes.success) {
+    const s = dashRes.stats;
+    document.getElementById('s-total').textContent  = s.total_products;
+    document.getElementById('s-drops').textContent  = s.price_drops;
+    document.getElementById('s-alerts').textContent = s.recent_alerts;
+  }
+
+  if (!prodRes.success || !prodRes.products.length) return;
+
+  const grid = document.getElementById('watchlist-grid');
+  grid.innerHTML = prodRes.products.map((p, i) => {
+    const hasCurrent = p.current_price !== null;
+    const dropPct    = p.drop_pct;
+    return `
+    <div class="wcard fade-up" style="animation-delay:${i * 0.06}s" onclick="window.location='/product/${p.id}'">
+      <div class="wcard-name">${p.name}</div>
+      <div class="wcard-site">
+        <span class="badge badge-muted">${p.website || 'Unknown'}</span>
+      </div>
+      <div class="wcard-prices">
+        <div class="wcard-current">${hasCurrent ? fmt(p.current_price) : '—'}</div>
+        ${dropPct > 0
+          ? `<div class="wcard-change down">▼ ${dropPct}% from high</div>`
+          : hasCurrent && p.current_price > p.target_price
+          ? `<div class="wcard-change" style="color:var(--text3)">Above target</div>`
+          : `<div class="wcard-change down">✓ At target!</div>`}
+      </div>
+      <div class="wcard-alert">
+        <span class="alert-dot"></span>
+        Alert at ${fmt(p.target_price)}
+      </div>
+      <div class="wcard-footer">
+        <a href="/product/${p.id}" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation()">View Chart</a>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();remove(${p.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addProduct() {
+  const url   = document.getElementById('m-url').value.trim();
+  const name  = document.getElementById('m-name').value.trim();
+  const price = document.getElementById('m-price').value.trim();
+  if (!url || !price) { toast('URL and price required', 'error'); return; }
+  const r = await fetch('/api/products', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ url, name, target_price: price })
+  });
+  const d = await r.json();
+  if (d.success) {
+    toast('✅ Product added!');
+    document.getElementById('add-modal').classList.remove('open');
+    loadWatchlist();
+  } else {
+    toast(d.error || 'Failed', 'error');
+  }
+}
+
+async function remove(id) {
+  if (!confirm('Remove from watchlist?')) return;
+  await fetch(`/api/products/${id}`, { method: 'DELETE' });
+  toast('Removed');
+  loadWatchlist();
+}
+
+loadWatchlist();
+</script>
+{% endblock %}

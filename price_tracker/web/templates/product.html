@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Smart Shopper{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+.page-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
+.back-link { display:inline-flex; align-items:center; gap:7px; color:var(--text2); font-size:.875rem; margin-bottom:24px; transition:color .2s; }
+.back-link:hover { color:var(--accent); }
+
+/* ── Product header ───────────────────────────────────────────── */
+.product-header {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 28px;
+  margin-bottom: 28px;
+}
+@media(max-width:600px) { .product-header { grid-template-columns:1fr; } }
+.product-img-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-size: 4rem;
+  min-height: 160px;
+}
+.product-img-box img { max-width: 120px; max-height: 120px; object-fit: contain; }
+.product-info { display: flex; flex-direction: column; gap: 12px; }
+.product-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.product-meta-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+.price-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  transition: border-color .2s;
+}
+.price-tile:hover { border-color: var(--border2); }
+.price-tile.best { border-color: var(--green); background: var(--green-g); }
+.price-tile-label { font-size: .72rem; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.price-tile-val { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; }
+.price-tile.best .price-tile-val { color: var(--green); }
+.price-tile-sub { font-size: .75rem; color: var(--text3); margin-top: 2px; }
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── Chart section ────────────────────────────────────────────── */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-title::after { content:''; flex:1; height:1px; background: var(--border); }
+
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  margin-bottom: 28px;
+}
+.chart-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.chart-tabs { display: flex; gap: 4px; }
+.chart-tab {
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: .8rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  background: transparent;
+  font-family: 'Outfit', sans-serif;
+  transition: all .15s;
+}
+.chart-tab.active { background: var(--accent-g); border-color: var(--accent); color: var(--accent); }
+.chart-wrap { position: relative; height: 220px; }
+
+/* ── AI Prediction ────────────────────────────────────────────── */
+.ai-panel {
+  background: linear-gradient(135deg, rgba(255,107,53,.07) 0%, rgba(255,214,10,.04) 100%);
+  border: 1px solid rgba(255,107,53,.2);
+  border-radius: var(--r-lg);
+  padding: 22px 26px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.ai-icon { font-size: 2.2rem; flex-shrink: 0; }
+.ai-body { flex: 1; min-width: 200px; }
+.ai-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: .95rem;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-text { font-size: .875rem; color: var(--text2); line-height: 1.55; }
+.confidence-ring {
+  width: 74px; height: 74px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.confidence-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.confidence-val { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 800; position: relative; z-index: 1; }
+.confidence-lbl { font-size: .65rem; color: var(--text3); position: relative; z-index: 1; }
+
+/* ── Alert panel ──────────────────────────────────────────────── */
+.alert-form {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.alert-form .form-group { flex: 1; min-width: 180px; margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <a href="/" class="back-link">
+    ← Back to Search
+  </a>
+
+  <!-- PRODUCT HEADER -->
+  <div class="product-header fade-up">
+    <div class="product-img-box" id="product-img">📦</div>
+    <div class="product-info">
+      <div class="product-title">{{ product.name }}</div>
+      <div class="product-meta-row">
+        <span class="badge badge-muted">{{ product.website or 'Unknown Store' }}</span>
+        <span class="badge badge-muted" id="last-checked-badge">Checking…</span>
+      </div>
+
+      <div class="price-grid" id="price-grid">
+        <div class="price-tile best">
+          <div class="price-tile-label">Current Price</div>
+          <div class="price-tile-val" id="current-price">{{ '₹{:,.0f}'.format(product.current_price) if product.current_price else '—' }}</div>
+          <div class="price-tile-sub">Last tracked</div>
+        </div>
+        <div class="price-tile">
+          <div class="price-tile-label">Alert Price</div>
+          <div class="price-tile-val" style="color:var(--gold)">{{ '₹{:,.0f}'.format(product.target_price) }}</div>
+          <div class="price-tile-sub">You set this</div>
+        </div>
+        <div class="price-tile">
+          <div class="price-tile-label">Lowest Ever</div>
+          <div class="price-tile-val" id="lowest-price">{{ '₹{:,.0f}'.format(product.lowest_price) if product.lowest_price else '—' }}</div>
+          <div class="price-tile-sub">All time</div>
+        </div>
+        <div class="price-tile">
+          <div class="price-tile-label">Highest Ever</div>
+          <div class="price-tile-val" id="highest-price">{{ '₹{:,.0f}'.format(product.highest_price) if product.highest_price else '—' }}</div>
+          <div class="price-tile-sub">All time</div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <a href="{{ product.url }}" target="_blank" class="btn btn-primary">View on {{ product.website or 'Store' }} →</a>
+        <button class="btn btn-ghost" onclick="loadAIPrediction()">🤖 AI Prediction</button>
+        <button class="btn btn-ghost" style="color:var(--red)" onclick="deleteProduct()">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI PREDICTION PANEL -->
+  <div class="ai-panel fade-up" id="ai-panel" style="display:none">
+    <div class="ai-icon">🤖</div>
+    <div class="ai-body">
+      <div class="ai-title">
+        AI Price Prediction
+        <span class="badge badge-accent">Beta</span>
+      </div>
+      <div class="ai-text" id="ai-text">Analysing price trends…</div>
+    </div>
+    <div style="text-align:center;flex-shrink:0">
+      <div class="confidence-ring">
+        <svg viewBox="0 0 74 74" width="74" height="74">
+          <circle cx="37" cy="37" r="31" fill="none" stroke="var(--border2)" stroke-width="6"/>
+          <circle cx="37" cy="37" r="31" fill="none" stroke="var(--green)" stroke-width="6"
+            stroke-dasharray="195" stroke-dashoffset="195" id="conf-arc" stroke-linecap="round"/>
+        </svg>
+        <div class="confidence-val" id="conf-val">—</div>
+        <div class="confidence-lbl">Confidence</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICE HISTORY CHART -->
+  <div class="section-title fade-up">Price History</div>
+  <div class="chart-card fade-up">
+    <div class="chart-toolbar">
+      <div>
+        <div style="font-weight:600;font-size:.9rem">{{ product.name }}</div>
+        <div style="color:var(--text3);font-size:.78rem;margin-top:2px" id="chart-subtitle">Loading…</div>
+      </div>
+      <div class="chart-tabs">
+        <button class="chart-tab" onclick="loadChart(7,this)">7D</button>
+        <button class="chart-tab active" onclick="loadChart(30,this)">30D</button>
+        <button class="chart-tab" onclick="loadChart(90,this)">90D</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="price-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- UPDATE ALERT PRICE -->
+  <div class="section-title fade-up">Update Alert</div>
+  <div class="alert-form fade-up">
+    <div class="form-group">
+      <label class="form-label" style="font-size:.82rem;color:var(--text2);margin-bottom:6px;display:block">Alert me when price drops below (₹)</label>
+      <input class="input" id="new-alert" type="number" value="{{ product.target_price|int }}" placeholder="Enter price">
+    </div>
+    <button class="btn btn-primary" onclick="updateAlert()">Update Alert</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUCT_ID = {{ product.id }};
+let chartInstance = null;
+
+// ── Load chart ─────────────────────────────────────────────────
+async function loadChart(days = 30, tabEl = null) {
+  if (tabEl) {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+  }
+
+  const r = await fetch(`/api/products/${PRODUCT_ID}/history?days=${days}`);
+  const d = await r.json();
+  if (!d.success) return;
+
+  const history = d.history;
+  const labels  = history.map(h => {
+    const dt = new Date(h.timestamp);
+    return dt.toLocaleDateString('en-IN', { month:'short', day:'numeric' });
+  });
+  const prices = history.map(h => h.price);
+
+  document.getElementById('chart-subtitle').textContent =
+    `${days}-day trend · ${history.length} data points`;
+
+  if (chartInstance) chartInstance.destroy();
+
+  const ctx = document.getElementById('price-chart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+  gradient.addColorStop(0, 'rgba(255,107,53,0.25)');
+  gradient.addColorStop(1, 'rgba(255,107,53,0)');
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Price (₹)',
+        data: prices,
+        borderColor: '#ff6b35',
+        borderWidth: 2.5,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        pointRadius: prices.length < 15 ? 4 : 2,
+        pointBackgroundColor: '#ff6b35',
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181826',
+          borderColor: '#2a2a3f',
+          borderWidth: 1,
+          titleColor: '#a0a0b8',
+          bodyColor: '#eeeef5',
+          callbacks: {
+            label: ctx => ' ₹' + Number(ctx.raw).toLocaleString('en-IN')
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1f1f30' },
+          ticks: { color: '#606078', maxTicksLimit: 8, font: { size: 11 } }
+        },
+        y: {
+          grid: { color: '#1f1f30' },
+          ticks: {
+            color: '#606078',
+            font: { size: 11 },
+            callback: v => '₹' + Number(v).toLocaleString('en-IN')
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── AI prediction ──────────────────────────────────────────────
+async function loadAIPrediction() {
+  const panel = document.getElementById('ai-panel');
+  panel.style.display = 'flex';
+  document.getElementById('ai-text').textContent = 'Analysing price trends…';
+
+  const r = await fetch(`/api/products/${PRODUCT_ID}/predict`);
+  const d = await r.json();
+
+  if (!d.success) {
+    document.getElementById('ai-text').textContent =
+      d.error || 'Not enough price history yet. Keep tracking!';
+    return;
+  }
+
+  const trendEmoji = d.trend === 'dropping' ? '📉' : d.trend === 'rising' ? '📈' : '➡️';
+  const trendMsg   = d.trend === 'dropping'
+    ? `<strong style="color:var(--green)">likely to drop further</strong>`
+    : d.trend === 'rising'
+    ? `<strong style="color:var(--red)">likely to rise</strong>`
+    : `<strong>likely to stay stable</strong>`;
+
+  document.getElementById('ai-text').innerHTML =
+    `Based on ${d.data_points} data points, this product is ${trendMsg} in the next 7 days. ` +
+    `${trendEmoji} Predicted price: <strong>${fmt(d.predicted_7d)}</strong> ` +
+    `(${d.trend === 'dropping' ? '▼' : '▲'} ${d.change_pct}% from current ${fmt(d.current)}).`;
+
+  // Animate confidence ring
+  const conf = d.confidence;
+  document.getElementById('conf-val').textContent = conf + '%';
+  const arc = document.getElementById('conf-arc');
+  const circumference = 195;
+  arc.style.strokeDashoffset = circumference - (circumference * conf / 100);
+  arc.style.stroke = d.trend === 'dropping' ? 'var(--green)' : d.trend === 'rising' ? 'var(--red)' : 'var(--gold)';
+  arc.style.transition = 'stroke-dashoffset 1s ease, stroke .3s';
+}
+
+// ── Update alert price ─────────────────────────────────────────
+async function updateAlert() {
+  const price = document.getElementById('new-alert').value;
+  if (!price) return;
+  const r = await fetch('/api/products', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ url: '{{ product.url }}', target_price: price, name: '{{ product.name }}' })
+  });
+  toast('Alert price updated!');
+}
+
+// ── Delete product ─────────────────────────────────────────────
+async function deleteProduct() {
+  if (!confirm('Remove {{ product.name }} from tracking?')) return;
+  await fetch(`/api/products/${PRODUCT_ID}`, { method: 'DELETE' });
+  toast('Product removed');
+  setTimeout(() => window.location.href = '/', 1000);
+}
+
+// ── Init ───────────────────────────────────────────────────────
+loadChart(30);
+loadAIPrediction();
+
+// Update last-checked badge
+{% if product.last_checked %}
+document.getElementById('last-checked-badge').textContent =
+  'Checked ' + new Date('{{ product.last_checked }}').toLocaleString('en-IN');
+{% else %}
+document.getElementById('last-checked-badge').textContent = 'Not checked yet';
+{% endif %}
+</script>
+{% endblock %}

@@ -1,573 +1,855 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Shopper - Configuration Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            min-height: 100vh;
-            padding: 30px 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: float 20s linear infinite;
-            z-index: 0;
-            pointer-events: none;
-        }
-        @keyframes float {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            color: white;
-            position: relative;
-            z-index: 1;
-            animation: slideDown 0.8s ease-out;
-        }
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .header h1 {
-            font-size: 3.5em;
-            margin-bottom: 10px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.95;
-            font-weight: 300;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        .container {
-            max-width: 850px;
-            margin: 0 auto;
-            background: white;
-            padding: 50px;
-            border-radius: 25px;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.25), 0 0 40px rgba(102, 126, 234, 0.15);
-            position: relative;
-            z-index: 1;
-            animation: fadeInUp 0.8s ease-out 0.2s both;
-            backdrop-filter: blur(10px);
-        }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .section {
-            margin-bottom: 45px;
-            animation: fadeInUp 0.8s ease-out;
-        }
-        .section:nth-child(2) { animation-delay: 0.3s; }
-        .section:nth-child(3) { animation-delay: 0.4s; }
-        .section:nth-child(4) { animation-delay: 0.5s; }
-        .section-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            position: relative;
-        }
-        .section-header::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            animation: expandWidth 0.6s ease-out;
-        }
-        @keyframes expandWidth {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-        .section-icon {
-            font-size: 2.5em;
-            margin-right: 18px;
-            animation: bounce 2s infinite;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-        .section-header h2 {
-            color: #333;
-            font-size: 1.6em;
-            margin: 0;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #444;
-            font-size: 0.98em;
-            letter-spacing: 0.3px;
-        }
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="number"],
-        input[type="url"] {
-            width: 100%;
-            padding: 14px 18px;
-            border: 2px solid #e8e8e8;
-            border-radius: 12px;
-            font-size: 1em;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #fafbfc;
-        }
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="password"]:focus,
-        input[type="number"]:focus,
-        input[type="url"]:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15), inset 0 0 0 2px rgba(102, 126, 234, 0.05);
-            background: #fff;
-            transform: translateY(-2px);
-        }
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 14px 28px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1em;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            flex: 1;
-            min-width: 150px;
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 0.5px;
-        }
-        button::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-        button:active::before {
-            width: 300px;
-            height: 300px;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
-            color: white;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
-            border: 2px solid transparent;
-        }
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.45);
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35);
-        }
-        .btn-secondary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(245, 158, 11, 0.45);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
-        }
-        .btn-danger:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(239, 68, 68, 0.45);
-        }
-        .product-item {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 25px;
-            border-radius: 16px;
-            margin-bottom: 25px;
-            border-left: 6px solid #667eea;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-        .product-item::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
-            transition: all 0.4s;
-        }
-        .product-item:hover {
-            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.15);
-            transform: translateX(6px) translateY(-2px);
-            border-left-color: #764ba2;
-        }
-        .product-item:hover::before {
-            right: -20%;
-            top: -20%;
-        }
-        .product-item .form-group {
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 1;
-        }
-        .product-controls {
-            display: flex;
-            gap: 12px;
-            margin-top: 18px;
-            position: relative;
-            z-index: 1;
-        }
-        .product-controls button {
-            flex: 1;
-            padding: 11px;
-            font-size: 0.9em;
-        }
-        .message {
-            padding: 18px;
-            border-radius: 14px;
-            margin-bottom: 25px;
-            text-align: center;
-            font-weight: 700;
-            animation: slideInDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-        @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .message.success {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            color: #065f46;
-            border-color: #6ee7b7;
-        }
-        .message.error {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #991b1b;
-            border-color: #fca5a5;
-        }
-        #products-list {
-            margin-bottom: 25px;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 50px 30px;
-            color: #999;
-            border: 3px dashed #e0e0e0;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
-            transition: all 0.4s;
-        }
-        .empty-state:hover {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
-        }
-        .empty-state-icon {
-            font-size: 4em;
-            margin-bottom: 15px;
-            opacity: 0.6;
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-        }
-        .footer-section {
-            text-align: center;
-            padding: 30px;
-            background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
-            border-radius: 16px;
-            margin-top: 40px;
-            border: 2px solid #e0e4ff;
-        }
-        .footer-section p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 0.98em;
-            font-weight: 500;
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 30px 20px;
-            }
-            .header h1 {
-                font-size: 2.2em;
-            }
-            button {
-                min-width: 120px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>�️ Smart Shopper</h1>
-        <p>Monitor prices across 19+ stores • Get alerts when prices drop</p>
+{% extends "base.html" %}
+{% block title %}Smart Shopper — Compare Prices{% endblock %}
+
+{% block head %}
+<style>
+/* ── Hero ─────────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: 64px 24px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse, rgba(255,107,53,.13) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 20px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: rgba(255,107,53,.08);
+  border: 1px solid rgba(255,107,53,.2);
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 5.5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.04em;
+  margin-bottom: 16px;
+}
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero-sub {
+  color: var(--text2);
+  font-size: 1.05rem;
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+/* ── Search bar ───────────────────────────────────────────────── */
+.search-outer {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border: 1.5px solid var(--border2);
+  border-radius: 14px;
+  padding: 6px 6px 6px 18px;
+  gap: 10px;
+  transition: border-color .25s, box-shadow .25s;
+}
+.search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255,107,53,.1);
+}
+.search-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: 'Outfit', sans-serif;
+  min-width: 0;
+}
+.search-icon { color: var(--text3); flex-shrink: 0; }
+.search-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 11px 26px;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity .2s, transform .15s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.search-btn:hover   { opacity: .88; }
+.search-btn:active  { transform: scale(.97); }
+.search-btn.loading { opacity: .6; pointer-events: none; }
+
+.chips {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: all .18s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-g); }
+
+/* ── Stats bar ────────────────────────────────────────────────── */
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 10px 0;
+  overflow-x: auto;
+}
+.stat {
+  padding: 20px 40px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stat:last-child { border-right: none; }
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.stat-val b { color: var(--accent); }
+.stat-lbl { color: var(--text3); font-size: .76rem; margin-top: 2px; }
+
+/* ── Main layout ──────────────────────────────────────────────── */
+.main {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+@media(max-width:900px) { .main { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+/* ── Sidebar ──────────────────────────────────────────────────── */
+.sidebar { display: flex; flex-direction: column; gap: 22px; position: sticky; top: 80px; }
+.sidebar-section-title {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.filter-list { display: flex; flex-direction: column; gap: 2px; }
+.filter-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: .875rem;
+  color: var(--text2);
+  transition: background .15s, color .15s;
+  user-select: none;
+}
+.filter-item:hover  { background: var(--surface); color: var(--text); }
+.filter-item.active { background: var(--accent-g); color: var(--accent); }
+.filter-count {
+  font-size: .72rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text3);
+}
+.filter-item.active .filter-count { background: rgba(255,107,53,.2); color: var(--accent); }
+
+/* ── Results ──────────────────────────────────────────────────── */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.results-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.results-title small { color: var(--text3); font-size: .82rem; font-weight: 400; margin-left: 7px; }
+
+.sort-select {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: .82rem;
+  cursor: pointer;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* ── Product card ─────────────────────────────────────────────── */
+.product-list { display: flex; flex-direction: column; gap: 12px; }
+
+.pcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  transition: border-color .22s, box-shadow .22s;
+  cursor: pointer;
+}
+.pcard:hover {
+  border-color: rgba(255,107,53,.35);
+  box-shadow: 0 4px 24px rgba(255,107,53,.07);
+}
+.pcard-img {
+  background: #111120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-right: 1px solid var(--border);
+  font-size: 2.5rem;
+}
+.pcard-img img {
+  width: 75px;
+  height: 75px;
+  object-fit: contain;
+}
+.pcard-body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.pcard-name {
+  font-weight: 600;
+  font-size: .92rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pcard-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rating { color: var(--gold); font-size: .8rem; display: flex; align-items: center; gap: 3px; }
+.reviews { color: var(--text3); font-size: .76rem; }
+.pcard-prices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Card actions ─────────────────────────────────────────────── */
+.pcard-action {
+  min-width: 140px;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.best-price-label { color: var(--text3); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+.best-price-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--green);
+  line-height: 1;
+}
+.drop-indicator {
+  font-size: .76rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.drop-indicator.down { background: var(--green-g); color: var(--green); }
+.drop-indicator.up   { background: rgba(255,77,109,.1); color: var(--red); }
+.drop-indicator.flat { background: var(--surface); color: var(--text3); }
+
+/* ── Compare view ─────────────────────────────────────────────── */
+.compare-view {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.compare-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.compare-table { width: 100%; border-collapse: collapse; }
+.compare-table th {
+  padding: 10px 18px;
+  text-align: left;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 13px 18px;
+  font-size: .875rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--surface); }
+.compare-table .row-best td { background: var(--green-g); }
+.compare-table .row-best td:first-child { border-left: 3px solid var(--green); }
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--text3);
+}
+.empty-icon { font-size: 3.5rem; margin-bottom: 16px; }
+.empty-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; color: var(--text2); margin-bottom: 8px; }
+
+/* ── Add product modal ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  transform: scale(.95) translateY(10px);
+  transition: transform .25s cubic-bezier(.34,1.4,.64,1);
+}
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 2px;
+}
+.modal-close:hover { color: var(--text); }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: .82rem; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<div class="hero fade-up">
+  <div class="hero-eyebrow">🇮🇳 India's Smartest Price Tracker</div>
+  <h1>Stop <em>overpaying</em>.<br>Compare. Save. Repeat.</h1>
+  <p class="hero-sub">Real-time prices from Amazon, Flipkart &amp; more — tracked 24/7 for you.</p>
+
+  <div class="search-outer">
+    <div class="search-bar">
+      <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="search-input" type="text" placeholder="Search iPhone 15, Samsung TV, OnePlus 12…" autocomplete="off">
+      <button class="search-btn" id="search-btn" onclick="doSearch()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Compare Prices
+      </button>
+    </div>
+    <div class="chips">
+      <span class="chip" onclick="quickSearch('Samsung Galaxy S24')">📱 Galaxy S24</span>
+      <span class="chip" onclick="quickSearch('iPhone 15 Pro')">🍎 iPhone 15 Pro</span>
+      <span class="chip" onclick="quickSearch('Sony WH-1000XM5')">🎧 Sony XM5</span>
+      <span class="chip" onclick="quickSearch('MacBook Air M2')">💻 MacBook Air</span>
+      <span class="chip" onclick="quickSearch('OnePlus 12')">⚡ OnePlus 12</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat fade-up">
+    <div class="stat-val"><b id="stat-products">…</b></div>
+    <div class="stat-lbl">Products tracked</div>
+  </div>
+  <div class="stat fade-up fade-up-1">
+    <div class="stat-val"><b id="stat-drops">…</b></div>
+    <div class="stat-lbl">Active price drops</div>
+  </div>
+  <div class="stat fade-up fade-up-2">
+    <div class="stat-val"><b>3</b></div>
+    <div class="stat-lbl">Sites compared</div>
+  </div>
+  <div class="stat fade-up fade-up-3">
+    <div class="stat-val"><b>5 min</b></div>
+    <div class="stat-lbl">Check interval</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Marketplace</div>
+      <div class="filter-list" id="site-filters">
+        <div class="filter-item active" data-site="all" onclick="filterSite(this,'all')">
+          <span>🛒 All Sites</span><span class="filter-count">3</span>
+        </div>
+        <div class="filter-item" data-site="amazon" onclick="filterSite(this,'amazon')">
+          <span>🟠 Amazon India</span>
+        </div>
+        <div class="filter-item" data-site="flipkart" onclick="filterSite(this,'flipkart')">
+          <span>🔵 Flipkart</span>
+        </div>
+        <div class="filter-item" data-site="meesho" onclick="filterSite(this,'meesho')">
+          <span>🔴 Meesho</span>
+        </div>
+      </div>
     </div>
 
-    <div class="container">
-        <div id="message"></div>
-
-        <div class="section">
-            <div class="section-header">
-                <span class="section-icon">📧</span>
-                <h2>Email Configuration</h2>
-            </div>
-        <div class="form-group">
-            <label>💌 Gmail Address (Sender):</label>
-            <input type="email" id="sender_gmail" placeholder="your.email@gmail.com" value="{{config.get('sender_gmail', '')}}">
-        </div>
-        <div class="form-group">
-            <label>🔐 Gmail App Password (16 chars):</label>
-            <input type="password" id="gmail_password" placeholder="Your 16-character App Password" value="{{config.get('gmail_password', '')}}">
-        </div>
-        <div class="form-group">
-            <label>📬 Receiver Email:</label>
-            <input type="email" id="receiver_email" placeholder="where@to.send.alerts" value="{{config.get('receiver_email', '')}}">
-        </div>
-        <div class="button-group">
-            <button class="btn-primary" onclick="saveConfig()">💾 Save Email Settings</button>
-        </div>
-        </div>
-
-        <div class="section">
-            <div class="section-header">
-                <span class="section-icon">📦</span>
-                <h2>Products to Track</h2>
-            </div>
-        <div id="products-list"></div>
-        <div class="button-group">
-            <button class="btn-secondary" onclick="addProduct()">➕ Add Product</button>
-            <button class="btn-danger" onclick="clearAllProducts()">🗑️ Clear All Products</button>
-        </div>
-        </div>
-
-        <div class="footer-section">
-            <p>✅ Configuration saved automatically. Ready to start monitoring prices!</p>
-            <div class="button-group">
-                <button class="btn-danger" onclick="shutdownServer()">🛑 Close Configuration</button>
-            </div>
-        </div>
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Sort By</div>
+      <div class="filter-list">
+        <div class="filter-item active" onclick="sortResults('price')">💰 Lowest Price</div>
+        <div class="filter-item" onclick="sortResults('rating')">⭐ Best Rated</div>
+        <div class="filter-item" onclick="sortResults('drop')">📉 Biggest Drop</div>
+      </div>
     </div>
 
-    <script>
-        let products = {{products|safe}};
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openAddModal()">
+          + Track New URL
+        </button>
+        <a href="/watchlist" class="btn btn-ghost" style="width:100%;justify-content:center">
+          ❤ My Watchlist
+        </a>
+      </div>
+    </div>
+  </div>
 
-        function showMessage(text, type) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.className = 'message ' + type;
-            setTimeout(() => {
-                msg.textContent = '';
-                msg.className = '';
-            }, 3000);
-        }
+  <!-- RESULTS PANEL -->
+  <div id="results-panel">
 
-        function saveConfig() {
-            const config = {
-                sender_gmail: document.getElementById('sender_gmail').value,
-                gmail_password: document.getElementById('gmail_password').value,
-                receiver_email: document.getElementById('receiver_email').value
-            };
+    <!-- Default: show watchlist products -->
+    <div id="default-view">
+      <div class="results-header">
+        <div class="results-title">Currently Tracking <small id="tracking-count">0 products</small></div>
+        <button class="btn btn-ghost btn-sm" onclick="openAddModal()">+ Add Product</button>
+      </div>
+      <div class="product-list" id="tracked-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">Search for a product above</div>
+          <p>Or start tracking a product URL to see price history &amp; alerts</p>
+        </div>
+      </div>
+    </div>
 
-            if (!config.sender_gmail || !config.gmail_password || !config.receiver_email) {
-                showMessage('❌ Please fill in all email fields', 'error');
-                return;
-            }
+    <!-- Search results view -->
+    <div id="search-view" style="display:none">
+      <div class="results-header">
+        <div class="results-title" id="search-title">Results <small></small></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select class="sort-select" onchange="sortResults(this.value)">
+            <option value="price">Lowest Price</option>
+            <option value="rating">Best Rating</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="showView('default')">✕ Clear</button>
+        </div>
+      </div>
 
-            fetch('/config', {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(config)
-            })
-            .then(r => r.json())
-            .then(r => {
-                if (r.status === 200) {
-                    showMessage('✅ Email configuration saved!', 'success');
-                } else {
-                    showMessage('❌ Error saving configuration', 'error');
-                }
-            })
-            .catch(() => showMessage('❌ Error saving configuration', 'error'));
-        }
+      <!-- Compare table (best deals per source) -->
+      <div id="compare-wrap" style="display:none;margin-bottom:18px">
+        <div class="compare-view">
+          <div class="compare-header">
+            <span class="syne fw-700">Price Comparison</span>
+            <span class="badge badge-green">✓ Live results</span>
+          </div>
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Store</th>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Rating</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="compare-body"></tbody>
+          </table>
+        </div>
+      </div>
 
-        function addProduct() {
-            products.push({url: '', warn_price: ''});
-            renderProducts();
-        }
+      <!-- Full result cards -->
+      <div class="product-list" id="search-list"></div>
+    </div>
 
-        function removeProduct(index) {
-            products.splice(index, 1);
-            renderProducts();
-        }
+  </div>
+</div>
 
-        function saveProducts() {
-            const filteredProducts = products.filter(p => p.url && p.warn_price);
-            
-            if (filteredProducts.length === 0) {
-                showMessage('❌ Please add at least one product', 'error');
-                return;
-            }
+<!-- ADD PRODUCT MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Track a Product
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Product URL (Amazon / Flipkart / Meesho)</label>
+      <input class="input" id="m-url" type="url" placeholder="https://www.amazon.in/dp/…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Product Name (optional)</label>
+      <input class="input" id="m-name" type="text" placeholder="e.g. Samsung Galaxy S24">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alert me when price drops below (₹)</label>
+      <input class="input" id="m-price" type="number" placeholder="e.g. 55000">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="addProduct()">
+        🔔 Start Tracking
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
-            const productsData = filteredProducts.map(p => ({
-                url: p.url,
-                warn_price: parseFloat(p.warn_price)
-            }));
+{% endblock %}
 
-            fetch('/products', {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(productsData)
-            })
-            .then(r => r.json())
-            .then(r => {
-                if (r.status === 200) {
-                    showMessage('✅ Products saved!', 'success');
-                } else {
-                    showMessage('❌ Error saving products', 'error');
-                }
-            })
-            .catch(() => showMessage('❌ Error saving products', 'error'));
-        }
+{% block scripts %}
+<script>
+let allResults = [];
+let activeFilter = 'all';
 
-        function clearAllProducts() {
-            if (confirm('⚠️ Are you sure? This will delete all products.')) {
-                fetch('/products', {method: 'DELETE'})
-                .then(r => r.json())
-                .then(r => {
-                    if (r.status === 200) {
-                        products = [];
-                        renderProducts();
-                        showMessage('✅ All products deleted', 'success');
-                    }
-                })
-                .catch(() => showMessage('❌ Error deleting products', 'error'));
-            }
-        }
+// ── Load stats ─────────────────────────────────────────────────
+async function loadStats() {
+  const r = await fetch('/api/dashboard');
+  const d = await r.json();
+  if (d.success) {
+    document.getElementById('stat-products').textContent = d.stats.total_products;
+    document.getElementById('stat-drops').textContent = d.stats.price_drops;
+  }
+}
 
-        function renderProducts() {
-            const list = document.getElementById('products-list');
-            list.innerHTML = '';
+// ── Load tracked products ──────────────────────────────────────
+async function loadTracked() {
+  const r = await fetch('/api/products');
+  const d = await r.json();
+  const list = document.getElementById('tracked-list');
+  const count = document.getElementById('tracking-count');
 
-            if (products.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">�</div>
-                        <p>No products added yet. Click "Add Product" to get started!</p>
-                    </div>
-                `;
-                return;
-            }
+  if (!d.success || !d.products.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Search for a product above</div>
+      <p>Or click <strong>+ Add Product</strong> to track by URL</p>
+    </div>`;
+    count.textContent = '0 products';
+    return;
+  }
 
-            products.forEach((p, i) => {
-                const div = document.createElement('div');
-                div.className = 'product-item';
-                div.innerHTML = `
-                    <div class="form-group">
-                        <label>🔗 Product URL:</label>
-                        <input type="url" placeholder="https://amazon.com/product/..." 
-                            value="${p.url || ''}"
-                            onchange="products[${i}].url = this.value">
-                    </div>
-                    <div class="form-group">
-                        <label>💵 Alert Price (drops below this):</label>
-                        <input type="number" step="0.01" placeholder="99.99"
-                            value="${p.warn_price || ''}"
-                            onchange="products[${i}].warn_price = this.value">
-                    </div>
-                    <div class="product-controls">
-                        <button class="btn-danger" onclick="removeProduct(${i})">❌ Remove</button>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
+  count.textContent = `${d.products.length} products`;
+  list.innerHTML = d.products.map(p => renderTrackedCard(p)).join('');
+}
 
-            if (products.length > 0) {
-                const saveBtn = document.createElement('button');
-                saveBtn.className = 'btn-primary';
-                saveBtn.textContent = '💾 Save All Products';
-                saveBtn.onclick = saveProducts;
-                saveBtn.style.width = '100%';
-                saveBtn.style.marginTop = '15px';
-                list.appendChild(saveBtn);
-            }
-        }
+function renderTrackedCard(p) {
+  const drop = p.drop_pct > 0
+    ? `<span class="drop-indicator down">▼ ${p.drop_pct}%</span>`
+    : `<span class="drop-indicator flat">Stable</span>`;
+  const hasCurrent = p.current_price !== null && p.current_price !== undefined;
+  return `
+  <div class="pcard fade-up" onclick="window.location='/product/${p.id}'">
+    <div class="pcard-img">${p.image_url ? `<img src="${p.image_url}" onerror="this.parentElement.innerHTML='📦'">` : '📦'}</div>
+    <div class="pcard-body">
+      <div>
+        <div class="pcard-name">${p.name}</div>
+        <div class="pcard-meta" style="margin-top:6px">
+          <span class="badge badge-muted">${p.website || 'Unknown'}</span>
+          ${drop}
+        </div>
+      </div>
+      <div class="pcard-prices">
+        <div class="price-pill">
+          <span class="site-label">Current</span>
+          <span class="amount">${hasCurrent ? fmt(p.current_price) : '—'}</span>
+        </div>
+        <div class="price-pill" style="border-color:var(--gold)">
+          <span class="site-label">Alert</span>
+          <span class="amount" style="color:var(--gold)">${fmt(p.target_price)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="pcard-action">
+      <div class="best-price-label">Best Price</div>
+      <div class="best-price-amount">${hasCurrent ? fmt(p.current_price) : '—'}</div>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();removeProduct(${p.id})">Remove</button>
+    </div>
+  </div>`;
+}
 
-        function shutdownServer() {
-            if (confirm('Are you sure you want to shutdown the server?')) {
-                fetch('/shutdown', {method: 'POST'})
-                .then(() => {
-                    showMessage('👋 Server shutting down...', 'success');
-                    setTimeout(() => window.close(), 1000);
-                })
-                .catch(() => showMessage('❌ Error shutting down', 'error'));
-            }
-        }
+// ── Search ─────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
 
-        // Initial render
-        renderProducts();
-    </script>
-</body>
-</html>
+  const btn = document.getElementById('search-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = `<span class="spinner" style="width:15px;height:15px;border-width:2px"></span> Searching…`;
+
+  try {
+    const [searchRes, compareRes] = await Promise.all([
+      fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
+      fetch(`/api/compare?q=${encodeURIComponent(q)}`).then(r => r.json()),
+    ]);
+
+    allResults = searchRes.results || [];
+    const comparisons = compareRes.comparisons || [];
+
+    showView('search');
+    document.getElementById('search-title').innerHTML =
+      `Results for "${q}" <small>${allResults.length} found${searchRes.demo ? ' (demo data)' : ''}</small>`;
+
+    // Render compare table
+    if (comparisons.length) {
+      const minPrice = Math.min(...comparisons.map(c => c.price));
+      document.getElementById('compare-body').innerHTML = comparisons.map(c => {
+        const isBest = c.price === minPrice;
+        return `<tr class="${isBest ? 'row-best' : ''}">
+          <td><div style="display:flex;align-items:center;gap:8px">
+            <span class="dot ${dot(c.source)}"></span>
+            <strong>${c.source}</strong>
+          </div></td>
+          <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.title}</td>
+          <td><strong style="color:${isBest ? 'var(--green)' : 'var(--text)'};font-size:1rem">${fmt(c.price)}</strong>
+            ${isBest ? '<span class="badge badge-green" style="margin-left:6px">Best</span>' : ''}
+          </td>
+          <td>${c.rating ? `⭐ ${c.rating}` : '—'}</td>
+          <td><a href="${c.link}" target="_blank" onclick="event.stopPropagation()" class="btn btn-ghost btn-sm">View →</a></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('compare-wrap').style.display = 'block';
+    }
+
+    renderSearchResults(allResults);
+  } catch (e) {
+    toast('Search failed. Check console.', 'error');
+    console.error(e);
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Compare Prices`;
+  }
+}
+
+function renderSearchResults(results) {
+  const list = document.getElementById('search-list');
+  if (!results.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">😕</div>
+      <div class="empty-title">No results found</div><p>Try a different search term</p></div>`;
+    return;
+  }
+  list.innerHTML = results.map((r, i) => `
+  <div class="pcard fade-up" style="animation-delay:${i * 0.05}s">
+    <div class="pcard-img">
+      ${r.image ? `<img src="${r.image}" loading="lazy" onerror="this.parentElement.innerHTML='📦'">` : '📦'}
+    </div>
+    <div class="pcard-body">
+      <div>
+        <div class="pcard-name">${r.title}</div>
+        <div class="pcard-meta" style="margin-top:6px">
+          <span class="badge badge-muted">${r.source}</span>
+          ${r.rating ? `<span class="rating">★ ${r.rating}</span>` : ''}
+          ${r.reviews ? `<span class="reviews">(${Number(r.reviews).toLocaleString('en-IN')} reviews)</span>` : ''}
+        </div>
+      </div>
+      <div class="pcard-prices">
+        <div class="price-pill">
+          <span class="dot ${dot(r.source)}"></span>
+          <span class="site-label">${r.source}</span>
+          <span class="amount">${r.price_str || fmt(r.price)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="pcard-action">
+      <div class="best-price-label">Price</div>
+      <div class="best-price-amount">${r.price_str || fmt(r.price)}</div>
+      <button class="btn btn-primary btn-sm" onclick="trackFromSearch(event, '${escHtml(r.link)}','${escHtml(r.title)}',${r.price},'${escHtml(r.source)}')">
+        🔔 Track
+      </button>
+      <a href="${r.link}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">View →</a>
+    </div>
+  </div>`).join('');
+}
+
+function trackFromSearch(e, url, name, price, source) {
+  e.stopPropagation();
+  document.getElementById('m-url').value   = url;
+  document.getElementById('m-name').value  = name;
+  document.getElementById('m-price').value = Math.round(price * 0.9);
+  openAddModal();
+}
+
+function escHtml(s) {
+  return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ── Add product modal ──────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('add-modal').classList.remove('open');
+}
+document.getElementById('add-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+async function addProduct() {
+  const url   = document.getElementById('m-url').value.trim();
+  const name  = document.getElementById('m-name').value.trim();
+  const price = document.getElementById('m-price').value.trim();
+
+  if (!url || !price) { toast('URL and alert price are required', 'error'); return; }
+
+  const r = await fetch('/api/products', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ url, name, target_price: price })
+  });
+  const d = await r.json();
+
+  if (d.success) {
+    toast('✅ Product added to watchlist!');
+    closeModal();
+    document.getElementById('m-url').value = '';
+    document.getElementById('m-name').value = '';
+    document.getElementById('m-price').value = '';
+    loadTracked();
+    loadStats();
+  } else {
+    toast(d.error || 'Failed to add product', 'error');
+  }
+}
+
+// ── Remove product ─────────────────────────────────────────────
+async function removeProduct(id) {
+  if (!confirm('Remove this product from tracking?')) return;
+  await fetch(`/api/products/${id}`, { method: 'DELETE' });
+  toast('Product removed');
+  loadTracked();
+  loadStats();
+}
+
+// ── View helpers ───────────────────────────────────────────────
+function showView(v) {
+  document.getElementById('default-view').style.display = v === 'default' ? 'block' : 'none';
+  document.getElementById('search-view').style.display  = v === 'search'  ? 'block' : 'none';
+  if (v === 'default') {
+    document.getElementById('compare-wrap').style.display = 'none';
+    document.getElementById('search-input').value = '';
+  }
+}
+function quickSearch(q) {
+  document.getElementById('search-input').value = q;
+  doSearch();
+}
+function filterSite(el, site) {
+  document.querySelectorAll('#site-filters .filter-item').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = site;
+  renderSearchResults(activeFilter === 'all' ? allResults :
+    allResults.filter(r => r.source.toLowerCase().includes(activeFilter)));
+}
+function sortResults(by) {
+  document.querySelectorAll('.filter-list .filter-item').forEach(x => x.classList.remove('active'));
+  if (by === 'price')  allResults.sort((a,b) => a.price - b.price);
+  if (by === 'rating') allResults.sort((a,b) => (b.rating||0) - (a.rating||0));
+  renderSearchResults(allResults);
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// ── Init ───────────────────────────────────────────────────────
+loadStats();
+loadTracked();
+</script>
+{% endblock %}
