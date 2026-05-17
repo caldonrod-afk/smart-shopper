@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Smart Shopper - Login{% endblock %}
+
+{% block head %}
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+.login-wrap {
+  max-width: 520px;
+  margin: 72px auto;
+  padding: 0 24px;
+}
+.login-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 28px;
+}
+.login-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.login-copy {
+  color: var(--text2);
+  margin-bottom: 22px;
+}
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+.login-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text3);
+  font-size: .8rem;
+  margin: 22px 0;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.login-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-top: 18px;
+}
+.login-user img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+.login-user strong { display: block; }
+.login-user span { color: var(--text2); font-size: .9rem; }
+.login-note {
+  margin-top: 18px;
+  color: var(--text3);
+  font-size: .86rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="login-wrap">
+  <section class="login-panel">
+    <div class="badge badge-accent" style="margin-bottom:14px">Receiver email</div>
+    <h1 class="login-title">Confirm where alerts should go</h1>
+    <p class="login-copy">Enter the email that should receive Smart Shopper price-drop alerts.</p>
+
+    <form class="login-form" onsubmit="handleEmailLogin(event)">
+      <input class="input" id="login-name" autocomplete="name" placeholder="Your name">
+      <input class="input" id="login-email" type="email" autocomplete="email" placeholder="Email for alerts" required>
+      <div class="login-actions">
+        <button class="btn btn-primary" type="submit">Confirm email</button>
+      </div>
+    </form>
+
+    {% if google_client_id %}
+      <div class="login-divider">or use Google</div>
+      <div id="g_id_onload"
+           data-client_id="{{ google_client_id }}"
+           data-callback="handleGoogleLogin"
+           data-auto_prompt="false"></div>
+      <div class="g_id_signin"
+           data-type="standard"
+           data-size="large"
+           data-theme="outline"
+           data-text="signin_with"
+           data-shape="rectangular"
+           data-logo_alignment="left"></div>
+    {% else %}
+      <p class="login-note">Google Sign-In can be enabled later by adding `GOOGLE_CLIENT_ID` to `.env`.</p>
+    {% endif %}
+
+    <div id="login-result"></div>
+    <p class="login-note">Only your basic Google profile email is used. This does not grant Gmail access.</p>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const result = document.getElementById('login-result');
+
+function renderUser(user, receiverEmail, receiverEmails = []) {
+  const allReceivers = receiverEmails.length ? receiverEmails : [receiverEmail || user.email].filter(Boolean);
+  result.innerHTML = `
+    <div class="login-user">
+      ${user.picture ? `<img src="${user.picture}" alt="">` : ''}
+      <div>
+        <strong>${user.name || 'Signed in'}</strong>
+        <span>${allReceivers.join(', ')}</span>
+      </div>
+    </div>`;
+}
+
+async function handleGoogleLogin(response) {
+  const r = await fetch('/api/auth/google', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({credential: response.credential})
+  });
+  const data = await r.json();
+  if (data.success) {
+    renderUser(data.user, data.receiver_email, data.receiver_emails || []);
+    toast('Receiver email confirmed');
+  } else {
+    toast(data.error || 'Google login failed', 'error');
+  }
+}
+
+async function handleEmailLogin(event) {
+  event.preventDefault();
+  const name = document.getElementById('login-name').value.trim();
+  const email = document.getElementById('login-email').value.trim();
+  const r = await fetch('/api/auth/email', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, email})
+  });
+  const data = await r.json();
+  if (data.success) {
+    renderUser(data.user, data.receiver_email, data.receiver_emails || []);
+    toast('Receiver email confirmed');
+  } else {
+    toast(data.error || 'Could not confirm email', 'error');
+  }
+}
+
+async function loadCurrentUser() {
+  const r = await fetch('/api/auth/me');
+  const data = await r.json();
+  if (data.user) renderUser(data.user, data.receiver_email, data.receiver_emails || []);
+  else if ((data.receiver_emails || []).length) {
+    result.innerHTML = `<p class="login-note">Current receivers: ${data.receiver_emails.join(', ')}</p>`;
+  } else if (data.receiver_email) {
+    result.innerHTML = `<p class="login-note">Current receiver: ${data.receiver_email}</p>`;
+  }
+}
+loadCurrentUser();
+</script>
+{% endblock %}

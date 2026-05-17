@@ -1,0 +1,991 @@
+{% extends "base.html" %}
+{% block title %}Smart Shopper — Compare Prices{% endblock %}
+
+{% block head %}
+<style>
+/* ── Hero ─────────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: 64px 24px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse, rgba(255,107,53,.13) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 20px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: rgba(255,107,53,.08);
+  border: 1px solid rgba(255,107,53,.2);
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 5.5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.04em;
+  margin-bottom: 16px;
+}
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero-sub {
+  color: var(--text2);
+  font-size: 1.05rem;
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+
+/* ── Search bar ───────────────────────────────────────────────── */
+.search-outer {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border: 1.5px solid var(--border2);
+  border-radius: 14px;
+  padding: 6px 6px 6px 18px;
+  gap: 10px;
+  transition: border-color .25s, box-shadow .25s;
+}
+.search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255,107,53,.1);
+}
+.search-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: 'Outfit', sans-serif;
+  min-width: 0;
+}
+.search-icon { color: var(--text3); flex-shrink: 0; }
+.search-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 11px 26px;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity .2s, transform .15s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.search-btn:hover   { opacity: .88; }
+.search-btn:active  { transform: scale(.97); }
+.search-btn.loading { opacity: .6; pointer-events: none; }
+
+.chips {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: all .18s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-g); }
+
+/* ── Stats bar ────────────────────────────────────────────────── */
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 10px 0;
+  overflow-x: auto;
+}
+.stat {
+  padding: 20px 40px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stat:last-child { border-right: none; }
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.stat-val b { color: var(--accent); }
+.stat-lbl { color: var(--text3); font-size: .76rem; margin-top: 2px; }
+
+/* ── Main layout ──────────────────────────────────────────────── */
+.main {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+@media(max-width:900px) { .main { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+/* ── Sidebar ──────────────────────────────────────────────────── */
+.sidebar { display: flex; flex-direction: column; gap: 22px; position: sticky; top: 80px; }
+.sidebar-section-title {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.filter-list { display: flex; flex-direction: column; gap: 2px; }
+.filter-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: .875rem;
+  color: var(--text2);
+  transition: background .15s, color .15s;
+  user-select: none;
+}
+.filter-item:hover  { background: var(--surface); color: var(--text); }
+.filter-item.active { background: var(--accent-g); color: var(--accent); }
+.filter-count {
+  font-size: .72rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text3);
+}
+.filter-item.active .filter-count { background: rgba(255,107,53,.2); color: var(--accent); }
+
+/* ── Results ──────────────────────────────────────────────────── */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.results-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.results-title small { color: var(--text3); font-size: .82rem; font-weight: 400; margin-left: 7px; }
+
+.sort-select {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: .82rem;
+  cursor: pointer;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* ── Product card ─────────────────────────────────────────────── */
+.product-list { display: flex; flex-direction: column; gap: 12px; }
+
+.pcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  transition: border-color .22s, box-shadow .22s;
+  cursor: pointer;
+}
+.pcard:hover {
+  border-color: rgba(255,107,53,.35);
+  box-shadow: 0 4px 24px rgba(255,107,53,.07);
+}
+.pcard.best-price {
+  border: 2px solid var(--green);
+  background: linear-gradient(135deg, rgba(0,200,83,.03) 0%, rgba(0,200,83,.01) 100%);
+}
+.pcard.best-price:hover {
+  border-color: var(--green);
+  box-shadow: 0 4px 24px rgba(0,200,83,.15);
+}
+.pcard-img {
+  background: #111120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-right: 1px solid var(--border);
+  font-size: 2.5rem;
+}
+.pcard-img img {
+  width: 75px;
+  height: 75px;
+  object-fit: contain;
+}
+.pcard-body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.pcard-name {
+  font-weight: 600;
+  font-size: .92rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pcard-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rating { color: var(--gold); font-size: .8rem; display: flex; align-items: center; gap: 3px; }
+.reviews { color: var(--text3); font-size: .76rem; }
+.pcard-prices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Card actions ─────────────────────────────────────────────── */
+.pcard-action {
+  min-width: 140px;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.best-price-label { color: var(--text3); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+.best-price-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--green);
+  line-height: 1;
+}
+.drop-indicator {
+  font-size: .76rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.drop-indicator.down { background: var(--green-g); color: var(--green); }
+.drop-indicator.up   { background: rgba(255,77,109,.1); color: var(--red); }
+.drop-indicator.flat { background: var(--surface); color: var(--text3); }
+
+/* ── Compare view ─────────────────────────────────────────────── */
+.compare-view {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.compare-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.compare-table { width: 100%; border-collapse: collapse; }
+.compare-table th {
+  padding: 10px 18px;
+  text-align: left;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 13px 18px;
+  font-size: .875rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--surface); }
+.compare-table .row-best td { background: var(--green-g); }
+.compare-table .row-best td:first-child { border-left: 3px solid var(--green); }
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--text3);
+}
+.empty-icon { font-size: 3.5rem; margin-bottom: 16px; }
+.empty-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; color: var(--text2); margin-bottom: 8px; }
+
+/* ── Add product modal ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  transform: scale(.95) translateY(10px);
+  transition: transform .25s cubic-bezier(.34,1.4,.64,1);
+}
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 2px;
+}
+.modal-close:hover { color: var(--text); }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: .82rem; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<div class="hero fade-up">
+  <div class="hero-eyebrow">🇮🇳 India's Smartest Price Tracker</div>
+  <h1>Stop <em>overpaying</em>.<br>Compare. Save. Repeat.</h1>
+  <p class="hero-sub">Real-time prices from Amazon, Flipkart &amp; more — tracked 24/7 for you.</p>
+
+  <div class="search-outer">
+    <div class="search-bar">
+      <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="search-input" type="text" placeholder="Search iPhone 15, Samsung TV, OnePlus 12…" autocomplete="off">
+      <button class="search-btn" id="search-btn" onclick="doSearch()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Compare Prices
+      </button>
+    </div>
+    <div class="chips">
+      <span class="chip" onclick="quickSearch('Samsung Galaxy S24')">📱 Galaxy S24</span>
+      <span class="chip" onclick="quickSearch('iPhone 15 Pro')">🍎 iPhone 15 Pro</span>
+      <span class="chip" onclick="quickSearch('Sony WH-1000XM5')">🎧 Sony XM5</span>
+      <span class="chip" onclick="quickSearch('MacBook Air M2')">💻 MacBook Air</span>
+      <span class="chip" onclick="quickSearch('OnePlus 12')">⚡ OnePlus 12</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat fade-up">
+    <div class="stat-val"><b id="stat-products">…</b></div>
+    <div class="stat-lbl">Products tracked</div>
+  </div>
+  <div class="stat fade-up fade-up-1">
+    <div class="stat-val"><b id="stat-drops">…</b></div>
+    <div class="stat-lbl">Active price drops</div>
+  </div>
+  <div class="stat fade-up fade-up-2">
+    <div class="stat-val"><b>3</b></div>
+    <div class="stat-lbl">Sites compared</div>
+  </div>
+  <div class="stat fade-up fade-up-3">
+    <div class="stat-val"><b>5 min</b></div>
+    <div class="stat-lbl">Check interval</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Marketplace</div>
+      <div class="filter-list" id="site-filters">
+        <div class="filter-item active" data-site="all" onclick="filterSite(this,'all')">
+          <span>🛒 All Sites</span><span class="filter-count">3</span>
+        </div>
+        <div class="filter-item" data-site="amazon" onclick="filterSite(this,'amazon')">
+          <span>🟠 Amazon India</span>
+        </div>
+        <div class="filter-item" data-site="flipkart" onclick="filterSite(this,'flipkart')">
+          <span>🔵 Flipkart</span>
+        </div>
+        <div class="filter-item" data-site="meesho" onclick="filterSite(this,'meesho')">
+          <span>🔴 Meesho</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Sort By</div>
+      <div class="filter-list">
+        <div class="filter-item active" onclick="sortResults('price')">💰 Lowest Price</div>
+        <div class="filter-item" onclick="sortResults('rating')">⭐ Best Rated</div>
+        <div class="filter-item" onclick="sortResults('drop')">📉 Biggest Drop</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:18px">
+      <div class="sidebar-section-title">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openAddModal()">
+          + Track New URL
+        </button>
+        <a href="/watchlist" class="btn btn-ghost" style="width:100%;justify-content:center">
+          ❤ My Watchlist
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div id="results-panel">
+
+    <!-- Default: show watchlist products -->
+    <div id="default-view">
+      <div class="results-header">
+        <div class="results-title">Currently Tracking <small id="tracking-count">0 products</small></div>
+        <button class="btn btn-ghost btn-sm" onclick="openAddModal()">+ Add Product</button>
+      </div>
+      <div class="product-list" id="tracked-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">Search for a product above</div>
+          <p>Or start tracking a product URL to see price history &amp; alerts</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search results view -->
+    <div id="search-view" style="display:none">
+      <div class="results-header">
+        <div class="results-title" id="search-title">Results <small></small></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select class="sort-select" onchange="sortResults(this.value)">
+            <option value="price">Lowest Price</option>
+            <option value="rating">Best Rating</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="showView('default')">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- Product results -->
+      <div class="product-list" id="search-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD PRODUCT MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Track a Product
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Product URL (Amazon / Flipkart / Meesho)</label>
+      <input class="input" id="m-url" type="url" placeholder="https://www.amazon.in/dp/…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Product Name (optional)</label>
+      <input class="input" id="m-name" type="text" placeholder="e.g. Samsung Galaxy S24">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alert me when price drops below (₹)</label>
+      <input class="input" id="m-price" type="number" placeholder="e.g. 55000">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="addProduct()">
+        🔔 Start Tracking
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Chat Widget ──────────────────────────────────────────── -->
+<div id="chat-bubble" onclick="toggleChat()" title="Shopping Assistant" style="
+  position:fixed; bottom:28px; right:28px; z-index:1000;
+  width:52px; height:52px; border-radius:50%;
+  background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 4px 20px rgba(255,107,53,.45);
+  font-size:1.4rem; transition:transform .2s;
+" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">🛍️</div>
+
+<div id="chat-panel" style="
+  position:fixed; bottom:90px; right:28px; z-index:1000;
+  width:340px; max-height:480px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.35);
+  display:none; flex-direction:column; overflow:hidden;
+">
+  <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,107,53,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">🛍️</div>
+      <div>
+        <div style="font-weight:600;font-size:.9rem;">Smart Shopper AI</div>
+        <div style="font-size:.72rem;color:var(--text3);" id="chat-status">● Online</div>
+      </div>
+    </div>
+    <button onclick="toggleChat()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem;padding:4px;">✕</button>
+  </div>
+  <div id="chat-messages" style="flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; max-height:320px;">
+    <div class="chat-msg bot">Hey! 👋 I'm your Smart Shopper assistant. Search for any product or ask me anything!</div>
+  </div>
+  <div style="padding:10px 12px; border-top:1px solid var(--border); display:flex; gap:8px;">
+    <input id="chat-input" class="input" placeholder="Ask me anything..." style="flex:1;font-size:.85rem;padding:8px 12px;"
+      onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" class="btn btn-primary" style="padding:8px 14px;font-size:.85rem;">Send</button>
+  </div>
+</div>
+
+<style>
+.chat-msg { max-width:80%; padding:9px 13px; border-radius:12px; font-size:.84rem; line-height:1.5; word-break:break-word; }
+.chat-msg.bot  { background:var(--surface2); color:var(--text1); align-self:flex-start; border-bottom-left-radius:3px; }
+.chat-msg.user { background:var(--accent); color:#fff; align-self:flex-end; border-bottom-right-radius:3px; }
+.chat-msg.bot strong, .chat-msg.bot b { color:var(--accent); }
+.chat-typing { display:flex; gap:4px; padding:10px 13px; }
+.chat-typing span { width:7px;height:7px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite; }
+.chat-typing span:nth-child(2){animation-delay:.15s}
+.chat-typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allResults = [];
+let activeFilter = 'all';
+
+// ── Load stats ─────────────────────────────────────────────────
+async function loadStats() {
+  const r = await fetch('/api/dashboard');
+  const d = await r.json();
+  if (d.success) {
+    document.getElementById('stat-products').textContent = d.stats.total_products;
+    document.getElementById('stat-drops').textContent = d.stats.price_drops;
+  }
+}
+
+// ── Load tracked products ──────────────────────────────────────
+async function loadTracked() {
+  const r = await fetch('/api/products');
+  const d = await r.json();
+  const list = document.getElementById('tracked-list');
+  const count = document.getElementById('tracking-count');
+
+  if (!d.success || !d.products.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Search for a product above</div>
+      <p>Or click <strong>+ Add Product</strong> to track by URL</p>
+    </div>`;
+    count.textContent = '0 products';
+    return;
+  }
+
+  count.textContent = `${d.products.length} products`;
+  list.innerHTML = d.products.map(p => renderTrackedCard(p)).join('');
+}
+
+function renderTrackedCard(p) {
+  const drop = p.drop_pct > 0
+    ? `<span class="drop-indicator down">▼ ${p.drop_pct}%</span>`
+    : `<span class="drop-indicator flat">Stable</span>`;
+  const hasCurrent = p.current_price !== null && p.current_price !== undefined;
+  return `
+  <div class="pcard fade-up" onclick="window.location='/product/${p.id}'">
+    <div class="pcard-img">${p.image_url ? `<img src="${p.image_url}" onerror="this.parentElement.innerHTML='📦'">` : '📦'}</div>
+    <div class="pcard-body">
+      <div>
+        <div class="pcard-name">${p.name}</div>
+        <div class="pcard-meta" style="margin-top:6px">
+          <span class="badge badge-muted">${p.website || 'Unknown'}</span>
+          ${drop}
+        </div>
+      </div>
+      <div class="pcard-prices">
+        <div class="price-pill">
+          <span class="site-label">Current</span>
+          <span class="amount">${hasCurrent ? fmt(p.current_price) : '—'}</span>
+        </div>
+        <div class="price-pill" style="border-color:var(--gold)">
+          <span class="site-label">Alert</span>
+          <span class="amount" style="color:var(--gold)">${fmt(p.target_price)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="pcard-action">
+      <div class="best-price-label">Best Price</div>
+      <div class="best-price-amount">${hasCurrent ? fmt(p.current_price) : '—'}</div>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();removeProduct(${p.id})">Remove</button>
+    </div>
+  </div>`;
+}
+
+// ── Search ─────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+
+  const btn = document.getElementById('search-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = `<span class="spinner" style="width:15px;height:15px;border-width:2px"></span> Searching…`;
+
+  try {
+    const [searchRes, compareRes] = await Promise.all([
+      fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
+      fetch(`/api/compare?q=${encodeURIComponent(q)}`).then(r => r.json()),
+    ]);
+
+    allResults = searchRes.results || [];
+
+    // Sort by price (cheapest first)
+    allResults.sort((a, b) => a.price - b.price);
+
+    showView('search');
+    document.getElementById('search-title').innerHTML =
+      `Results for "${q}" <small>${allResults.length} found${searchRes.demo ? ' (demo data)' : ''}</small>`;
+
+    renderSearchResults(allResults);
+  } catch (e) {
+    toast('Search failed. Check console.', 'error');
+    console.error(e);
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Compare Prices`;
+  }
+}
+
+function renderSearchResults(results) {
+  const list = document.getElementById('search-list');
+  if (!results.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">😕</div>
+      <div class="empty-title">No results found</div><p>Try a different search term</p></div>`;
+    return;
+  }
+  
+  const minPrice = Math.min(...results.map(r => r.price));
+  
+  // Store results globally for track button access
+  window.searchResults = results;
+  
+  list.innerHTML = results.map((r, i) => {
+    const isBest = r.price === minPrice;
+    const priceDiff = i > 0 ? r.price - minPrice : 0;
+    const canTrack = r.link && r.link !== '#' && r.price;
+    
+    return `
+  <div class="pcard fade-up ${isBest ? 'best-price' : ''}" style="animation-delay:${i * 0.05}s">
+    <div class="pcard-img">
+      ${r.image ? `<img src="${r.image}" loading="lazy" onerror="this.parentElement.innerHTML='📦'">` : '📦'}
+    </div>
+    <div class="pcard-body">
+      <div>
+        <div class="pcard-name">${r.title}</div>
+        <div class="pcard-meta" style="margin-top:6px">
+          <span class="badge badge-muted">${r.source}</span>
+          ${r.rating ? `<span class="rating">★ ${r.rating}</span>` : ''}
+          ${r.reviews ? `<span class="reviews">(${Number(r.reviews).toLocaleString('en-IN')} reviews)</span>` : ''}
+        </div>
+      </div>
+      <div class="pcard-prices">
+        <div class="price-pill">
+          <span class="dot ${dot(r.source)}"></span>
+          <span class="site-label">${r.source}</span>
+          <span class="amount">${r.price_str || fmt(r.price)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="pcard-action">
+      <div class="best-price-label">Price</div>
+      <div class="best-price-amount">${r.price_str || fmt(r.price)}${priceDiff > 0 ? ` <span style="color:var(--text3);font-size:.75rem">+${fmt(priceDiff)}</span>` : ''}</div>
+      ${isBest ? '<span class="badge badge-green" style="margin-bottom:8px">Best Price</span>' : ''}
+      <button class="btn btn-primary btn-sm" onclick="trackProduct(${i})" ${canTrack ? '' : 'disabled title="Add a real SERPAPI_KEY in .env to track live results"'}>
+        ${canTrack ? '🔔 Track' : 'Demo only'}
+      </button>
+      ${canTrack ? `<a href="${r.link}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">View →</a>` : ''}
+    </div>
+  </div>`;
+  }).join('');
+}
+
+async function trackProduct(index) {
+  const r = window.searchResults[index];
+  console.log('Tracking product:', r);
+  
+  if (!r) {
+    alert("❌ Product not found");
+    return;
+  }
+  
+  if (!r.link || r.link === '#' || !r.price) {
+    alert("This is demo data. Add a real SERPAPI_KEY in .env, restart the app, then search again.");
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/products', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        url: r.link,
+        name: r.title || 'Unnamed Product',
+        target_price: r.price * 0.9,
+        current_price: r.price,
+        image_url: r.image || ''
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("✅ Product added to watchlist!");
+    } else {
+      alert("❌ " + (data.error || "Failed to add product"));
+    }
+  } catch (err) {
+    alert("❌ Network error");
+    console.error(err);
+  }
+}
+
+function trackFromSearch(e, url, name, price, source) {
+  e.stopPropagation();
+  document.getElementById('m-url').value   = url;
+  document.getElementById('m-name').value  = name;
+  document.getElementById('m-price').value = Math.round(price * 0.9);
+  openAddModal();
+}
+
+function escHtml(s) {
+  return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ── Add product modal ──────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('add-modal').classList.remove('open');
+}
+document.getElementById('add-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+async function addProduct() {
+  const url   = document.getElementById('m-url').value.trim();
+  const name  = document.getElementById('m-name').value.trim();
+  const price = document.getElementById('m-price').value.trim();
+
+  if (!url || !price) { toast('URL and alert price are required', 'error'); return; }
+
+  const r = await fetch('/api/products', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ url, name, target_price: price })
+  });
+  const d = await r.json();
+
+  if (d.success) {
+    toast('✅ Product added to watchlist!');
+    closeModal();
+    document.getElementById('m-url').value = '';
+    document.getElementById('m-name').value = '';
+    document.getElementById('m-price').value = '';
+    loadTracked();
+    loadStats();
+  } else {
+    toast(d.error || 'Failed to add product', 'error');
+  }
+}
+
+// ── Remove product ─────────────────────────────────────────────
+async function removeProduct(id) {
+  if (!confirm('Remove this product from tracking?')) return;
+  await fetch(`/api/products/${id}`, { method: 'DELETE' });
+  toast('Product removed');
+  loadTracked();
+  loadStats();
+}
+
+// ── View helpers ───────────────────────────────────────────────
+function showView(v) {
+  document.getElementById('default-view').style.display = v === 'default' ? 'block' : 'none';
+  document.getElementById('search-view').style.display  = v === 'search'  ? 'block' : 'none';
+  if (v === 'default') {
+    document.getElementById('search-input').value = '';
+  }
+}
+function quickSearch(q) {
+  document.getElementById('search-input').value = q;
+  doSearch();
+}
+function filterSite(el, site) {
+  document.querySelectorAll('#site-filters .filter-item').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = site;
+  renderSearchResults(activeFilter === 'all' ? allResults :
+    allResults.filter(r => r.source.toLowerCase().includes(activeFilter)));
+}
+function sortResults(by) {
+  document.querySelectorAll('.filter-list .filter-item').forEach(x => x.classList.remove('active'));
+  if (by === 'price')  allResults.sort((a,b) => a.price - b.price);
+  if (by === 'rating') allResults.sort((a,b) => (b.rating||0) - (a.rating||0));
+  renderSearchResults(allResults);
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// ── Chat ───────────────────────────────────────────────────────
+let chatHistory = [];
+let chatOpen = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-panel').style.display = chatOpen ? 'flex' : 'none';
+  if (chatOpen) document.getElementById('chat-input').focus();
+}
+
+function appendMsg(text, role) {
+  const box = document.getElementById('chat-messages');
+  const el  = document.createElement('div');
+  el.className = `chat-msg ${role}`;
+  // Render **bold** markdown
+  el.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function showTyping() {
+  const box = document.getElementById('chat-messages');
+  const el  = document.createElement('div');
+  el.className = 'chat-msg bot chat-typing';
+  el.innerHTML = '<span></span><span></span><span></span>';
+  el.id = 'typing-indicator';
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  appendMsg(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+  showTyping();
+
+  document.getElementById('chat-status').textContent = '● Thinking…';
+
+  try {
+    const res  = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: msg, history: chatHistory.slice(-8) }),
+    });
+    const data = await res.json();
+    hideTyping();
+
+    const reply = data.reply || 'Sorry, something went wrong!';
+    appendMsg(reply, 'bot');
+    chatHistory.push({ role: 'assistant', content: reply });
+
+    const statusEl = document.getElementById('chat-status');
+    statusEl.textContent = data.ai ? '● AI-powered' : '● Online';
+  } catch (e) {
+    hideTyping();
+    appendMsg('Connection error. Please try again.', 'bot');
+    document.getElementById('chat-status').textContent = '● Online';
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+loadStats();
+loadTracked();
+</script>
+{% endblock %}
