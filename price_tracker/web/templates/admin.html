@@ -184,8 +184,9 @@
           <div class="form-hint">Generate at: Google Account → Security → App Passwords</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Receiver Email</label>
-          <input class="input" id="cfg-receiver" type="email" placeholder="alerts@example.com">
+          <label class="form-label">Receiver Emails</label>
+          <textarea class="input" id="cfg-receivers" rows="4" placeholder="one@example.com&#10;two@example.com"></textarea>
+          <div class="form-hint">Add one email per line. Alerts will be sent to all listed receivers.</div>
         </div>
         <button class="btn btn-primary" onclick="saveEmailConfig()">Save Email Settings</button>
       </div>
@@ -195,7 +196,17 @@
         <div class="form-group">
           <label class="form-label">SerpAPI Key</label>
           <input class="input" id="cfg-serpapi" type="password" placeholder="Get free key at serpapi.com">
-          <div class="form-hint">Free tier: 100 searches/month — enough for demos</div>
+          <div class="form-hint">Free tier: 100 searches/month — enables real product search</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gemini API Key <span style="color:var(--accent);font-size:.75rem">✨ AI Chat</span></label>
+          <input class="input" id="cfg-gemini" type="password" placeholder="AIza... — get from aistudio.google.com (free)">
+          <div class="form-hint">Powers the AI shopping assistant chatbot via Gemini 2.0 Flash. Leave blank to use rule-based replies.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Google Client ID <span style="color:var(--text3);font-size:.75rem">optional login</span></label>
+          <input class="input" id="cfg-google-client" type="text" placeholder="OAuth web client ID">
+          <div class="form-hint">Clear this field and save to remove Google Sign-In from the login page.</div>
         </div>
         <div class="form-group">
           <label class="form-label">Check Interval (minutes)</label>
@@ -296,8 +307,11 @@ async function loadAll() {
   if (cfgR.success) {
     const c = cfgR.config;
     document.getElementById('cfg-sender').value   = c.sender_gmail   || '';
-    document.getElementById('cfg-receiver').value = c.receiver_email || '';
+    document.getElementById('cfg-receivers').value = (c.receiver_emails || (c.receiver_email ? [c.receiver_email] : [])).join('\n');
     document.getElementById('cfg-interval').value = c.check_interval_hours ? c.check_interval_hours * 60 : 5;
+    if (c.serpapi_key)    document.getElementById('cfg-serpapi').value = c.serpapi_key;
+    if (c.gemini_api_key) document.getElementById('cfg-gemini').value  = c.gemini_api_key;
+    document.getElementById('cfg-google-client').value = c.google_client_id || '';
   }
 }
 
@@ -305,7 +319,7 @@ async function saveEmailConfig() {
   const data = {
     sender_gmail:   document.getElementById('cfg-sender').value,
     gmail_password: document.getElementById('cfg-pass').value,
-    receiver_email: document.getElementById('cfg-receiver').value,
+    receiver_emails: document.getElementById('cfg-receivers').value,
   };
   const r = await fetch('/api/config', {
     method: 'POST',
@@ -318,6 +332,8 @@ async function saveEmailConfig() {
 async function saveApiConfig() {
   const data = {
     serpapi_key:    document.getElementById('cfg-serpapi').value,
+    gemini_api_key: document.getElementById('cfg-gemini').value,
+    google_client_id: document.getElementById('cfg-google-client').value,
     check_interval: parseInt(document.getElementById('cfg-interval').value),
   };
   const r = await fetch('/api/config', {

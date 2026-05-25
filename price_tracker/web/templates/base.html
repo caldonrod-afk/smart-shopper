@@ -272,6 +272,7 @@
     <li><a href="/" id="nav-home">Compare</a></li>
     <li><a href="/watchlist" id="nav-watchlist">Watchlist</a></li>
     <li><a href="/admin" id="nav-admin">Admin</a></li>
+    <li><a href="/login" id="nav-login">Login</a></li>
   </ul>
   <div class="nav-right">
     <span id="nav-status" class="badge badge-muted" style="font-size:.72rem">⬤ Loading…</span>
@@ -288,6 +289,7 @@ const path = window.location.pathname;
 if (path === '/')         document.getElementById('nav-home')?.classList.add('active');
 if (path.startsWith('/watchlist')) document.getElementById('nav-watchlist')?.classList.add('active');
 if (path.startsWith('/admin'))     document.getElementById('nav-admin')?.classList.add('active');
+if (path.startsWith('/login'))     document.getElementById('nav-login')?.classList.add('active');
 
 // ── Toast helper ───────────────────────────────────────────────
 function toast(msg, type = 'success') {

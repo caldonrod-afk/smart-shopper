@@ -1,7 +1,10 @@
 __pycache__/
-venv/
+smartvenv/
+.vscode/
 *.db
+*.zip
+_zip_staging_clean/
 
 # Secrets
-config.json
 .env
+config.json

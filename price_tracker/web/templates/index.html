@@ -577,6 +577,55 @@
   </div>
 </div>
 
+<!-- ── Chat Widget ──────────────────────────────────────────── -->
+<div id="chat-bubble" onclick="toggleChat()" title="Shopping Assistant" style="
+  position:fixed; bottom:28px; right:28px; z-index:1000;
+  width:52px; height:52px; border-radius:50%;
+  background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 4px 20px rgba(255,107,53,.45);
+  font-size:1.4rem; transition:transform .2s;
+" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">🛍️</div>
+
+<div id="chat-panel" style="
+  position:fixed; bottom:90px; right:28px; z-index:1000;
+  width:340px; max-height:480px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.35);
+  display:none; flex-direction:column; overflow:hidden;
+">
+  <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,107,53,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">🛍️</div>
+      <div>
+        <div style="font-weight:600;font-size:.9rem;">Smart Shopper AI</div>
+        <div style="font-size:.72rem;color:var(--text3);" id="chat-status">● Online</div>
+      </div>
+    </div>
+    <button onclick="toggleChat()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem;padding:4px;">✕</button>
+  </div>
+  <div id="chat-messages" style="flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; max-height:320px;">
+    <div class="chat-msg bot">Hey! 👋 I'm your Smart Shopper assistant. Search for any product or ask me anything!</div>
+  </div>
+  <div style="padding:10px 12px; border-top:1px solid var(--border); display:flex; gap:8px;">
+    <input id="chat-input" class="input" placeholder="Ask me anything..." style="flex:1;font-size:.85rem;padding:8px 12px;"
+      onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" class="btn btn-primary" style="padding:8px 14px;font-size:.85rem;">Send</button>
+  </div>
+</div>
+
+<style>
+.chat-msg { max-width:80%; padding:9px 13px; border-radius:12px; font-size:.84rem; line-height:1.5; word-break:break-word; }
+.chat-msg.bot  { background:var(--surface2); color:var(--text1); align-self:flex-start; border-bottom-left-radius:3px; }
+.chat-msg.user { background:var(--accent); color:#fff; align-self:flex-end; border-bottom-right-radius:3px; }
+.chat-msg.bot strong, .chat-msg.bot b { color:var(--accent); }
+.chat-typing { display:flex; gap:4px; padding:10px 13px; }
+.chat-typing span { width:7px;height:7px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite; }
+.chat-typing span:nth-child(2){animation-delay:.15s}
+.chat-typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -700,6 +749,7 @@ function renderSearchResults(results) {
   list.innerHTML = results.map((r, i) => {
     const isBest = r.price === minPrice;
     const priceDiff = i > 0 ? r.price - minPrice : 0;
+    const canTrack = r.link && r.link !== '#' && r.price;
     
     return `
   <div class="pcard fade-up ${isBest ? 'best-price' : ''}" style="animation-delay:${i * 0.05}s">
@@ -727,10 +777,10 @@ function renderSearchResults(results) {
       <div class="best-price-label">Price</div>
       <div class="best-price-amount">${r.price_str || fmt(r.price)}${priceDiff > 0 ? ` <span style="color:var(--text3);font-size:.75rem">+${fmt(priceDiff)}</span>` : ''}</div>
       ${isBest ? '<span class="badge badge-green" style="margin-bottom:8px">Best Price</span>' : ''}
-      <button class="btn btn-primary btn-sm" onclick="trackProduct(${i})">
-        🔔 Track
+      <button class="btn btn-primary btn-sm" onclick="trackProduct(${i})" ${canTrack ? '' : 'disabled title="Add a real SERPAPI_KEY in .env to track live results"'}>
+        ${canTrack ? '🔔 Track' : 'Demo only'}
       </button>
-      <a href="${r.link}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">View →</a>
+      ${canTrack ? `<a href="${r.link}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">View →</a>` : ''}
     </div>
   </div>`;
   }).join('');
@@ -746,7 +796,7 @@ async function trackProduct(index) {
   }
   
   if (!r.link || r.link === '#' || !r.price) {
-    alert("❌ Product data missing (link or price invalid)");
+    alert("This is demo data. Add a real SERPAPI_KEY in .env, restart the app, then search again.");
     return;
   }
   
@@ -863,6 +913,76 @@ function sortResults(by) {
 document.getElementById('search-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doSearch();
 });
+
+// ── Chat ───────────────────────────────────────────────────────
+let chatHistory = [];
+let chatOpen = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-panel').style.display = chatOpen ? 'flex' : 'none';
+  if (chatOpen) document.getElementById('chat-input').focus();
+}
+
+function appendMsg(text, role) {
+  const box = document.getElementById('chat-messages');
+  const el  = document.createElement('div');
+  el.className = `chat-msg ${role}`;
+  // Render **bold** markdown
+  el.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function showTyping() {
+  const box = document.getElementById('chat-messages');
+  const el  = document.createElement('div');
+  el.className = 'chat-msg bot chat-typing';
+  el.innerHTML = '<span></span><span></span><span></span>';
+  el.id = 'typing-indicator';
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  appendMsg(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+  showTyping();
+
+  document.getElementById('chat-status').textContent = '● Thinking…';
+
+  try {
+    const res  = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: msg, history: chatHistory.slice(-8) }),
+    });
+    const data = await res.json();
+    hideTyping();
+
+    const reply = data.reply || 'Sorry, something went wrong!';
+    appendMsg(reply, 'bot');
+    chatHistory.push({ role: 'assistant', content: reply });
+
+    const statusEl = document.getElementById('chat-status');
+    statusEl.textContent = data.ai ? '● AI-powered' : '● Online';
+  } catch (e) {
+    hideTyping();
+    appendMsg('Connection error. Please try again.', 'bot');
+    document.getElementById('chat-status').textContent = '● Online';
+  }
+}
 
 // ── Init ───────────────────────────────────────────────────────
 loadStats();

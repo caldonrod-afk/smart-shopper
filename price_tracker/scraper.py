@@ -7,6 +7,7 @@ Persists every result to the SQLite database automatically.
 import re
 import time
 import json
+import os
 import sqlite3
 import requests
 from datetime import datetime
@@ -17,8 +18,24 @@ from urllib.parse import urlparse
 BASE_DIR = Path(__file__).resolve().parent.parent  # price_tracker/ → project root
 DB_PATH  = BASE_DIR / 'data' / 'price_tracker.db'
 CFG_PATH = BASE_DIR / 'config.json'
+ENV_PATH = BASE_DIR / '.env'
 
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+def _load_env_file():
+    if not ENV_PATH.exists():
+        return
+    for line in ENV_PATH.read_text(encoding='utf-8-sig').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip().lstrip('\ufeff')
+        value = value.strip().strip('"').strip("'")
+        if value:
+            os.environ[key] = value
+
+_load_env_file()
 
 HEADERS = {
     'User-Agent': (
@@ -32,12 +49,21 @@ HEADERS = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _load_config() -> dict:
+    cfg = {}
     try:
         if CFG_PATH.exists():
-            return json.loads(CFG_PATH.read_text())
+            cfg = json.loads(CFG_PATH.read_text())
     except Exception:
         pass
-    return {}
+
+    env_serpapi_key = os.environ.get('SERPAPI_KEY', '')
+    if env_serpapi_key:
+        cfg['serpapi_key'] = env_serpapi_key
+
+    if str(cfg.get('serpapi_key', '')).startswith(('http://127.0.0.1', 'http://localhost')):
+        cfg['serpapi_key'] = ''
+
+    return cfg
 
 def _clean_price(text) -> float | None:
     """Parse '₹62,999' or '62999.0' → 62999.0"""

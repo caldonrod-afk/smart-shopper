@@ -5,11 +5,14 @@ Single entry point replacing web_monitor.py + web_server.py
 """
 import json
 import os
+import re
 import sqlite3
+import time
+import requests
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 
 from price_tracker.analytics import analyze_price_history, summarize_watchlist_insights
 
@@ -26,8 +29,24 @@ except Exception as _e:
 BASE_DIR = Path(__file__).parent
 DB_PATH  = BASE_DIR / 'data' / 'price_tracker.db'
 CFG_PATH = BASE_DIR / 'config.json'
+ENV_PATH = BASE_DIR / '.env'
 
 DB_PATH.parent.mkdir(exist_ok=True)
+
+def load_env_file():
+    if not ENV_PATH.exists():
+        return
+    for line in ENV_PATH.read_text(encoding='utf-8-sig').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip().lstrip('\ufeff')
+        value = value.strip().strip('"').strip("'")
+        if value:
+            os.environ[key] = value
+
+load_env_file()
 
 app = Flask(
     __name__,
@@ -84,15 +103,85 @@ init_db()
 
 # ── Config helpers ────────────────────────────────────────────────────────────
 def load_config():
+    cfg = {}
     try:
         if CFG_PATH.exists():
-            return json.loads(CFG_PATH.read_text())
+            cfg = json.loads(CFG_PATH.read_text())
     except Exception:
         pass
-    return {}
+
+    env_values = {
+        'serpapi_key': os.environ.get('SERPAPI_KEY', ''),
+        'gemini_api_key': os.environ.get('GEMINI_API_KEY', ''),
+        'sender_gmail': os.environ.get('SENDER_GMAIL', ''),
+        'gmail_password': os.environ.get('GMAIL_PASSWORD', ''),
+    }
+    for key, value in env_values.items():
+        if value:
+            cfg[key] = value
+
+    if not cfg.get('receiver_email') and os.environ.get('RECEIVER_EMAIL', ''):
+        cfg['receiver_email'] = os.environ.get('RECEIVER_EMAIL', '')
+
+    if 'google_client_id' not in cfg and os.environ.get('GOOGLE_CLIENT_ID', ''):
+        cfg['google_client_id'] = os.environ.get('GOOGLE_CLIENT_ID', '')
+
+    receivers = _normalize_receiver_emails(cfg.get('receiver_emails') or cfg.get('receiver_email') or '')
+    if receivers:
+        cfg['receiver_emails'] = receivers
+        cfg['receiver_email'] = receivers[0]
+
+    if str(cfg.get('serpapi_key', '')).startswith(('http://127.0.0.1', 'http://localhost')):
+        cfg['serpapi_key'] = ''
+
+    return cfg
 
 def save_config(data):
     CFG_PATH.write_text(json.dumps(data, indent=2))
+
+def _normalize_receiver_emails(value):
+    if isinstance(value, str):
+        candidates = re.split(r'[\n,;]+', value)
+    elif isinstance(value, list):
+        candidates = value
+    else:
+        candidates = []
+
+    emails = []
+    seen = set()
+    for item in candidates:
+        email = str(item).strip().lower()
+        if not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            continue
+        if email not in seen:
+            emails.append(email)
+            seen.add(email)
+    return emails
+
+def update_config_values(updates):
+    cfg = {}
+    try:
+        if CFG_PATH.exists():
+            cfg = json.loads(CFG_PATH.read_text())
+    except Exception:
+        cfg = {}
+    if 'receiver_email' in updates and 'receiver_emails' not in updates:
+        emails = _normalize_receiver_emails(cfg.get('receiver_emails') or [])
+        new_email = _normalize_receiver_emails(updates.get('receiver_email'))
+        for email in new_email:
+            if email not in emails:
+                emails.append(email)
+        updates['receiver_emails'] = emails
+        updates['receiver_email'] = emails[0] if emails else ''
+
+    if 'receiver_emails' in updates:
+        emails = _normalize_receiver_emails(updates.get('receiver_emails'))
+        updates['receiver_emails'] = emails
+        updates['receiver_email'] = emails[0] if emails else ''
+
+    cfg.update(updates)
+    save_config(cfg)
+    return cfg
 
 
 def _get_price_history_lookup(conn, product_ids):
@@ -174,6 +263,20 @@ def watchlist():
 def admin():
     return render_template('admin.html')
 
+@app.route('/login')
+def login():
+    cfg = load_config()
+    return render_template(
+        'login.html',
+        google_client_id=cfg.get('google_client_id', ''),
+        user=session.get('user'),
+    )
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('login'))
+
 # ── REST API ──────────────────────────────────────────────────────────────────
 @app.route('/api/products', methods=['GET'])
 def api_get_products():
@@ -193,6 +296,88 @@ def api_get_products():
             p['drop_pct'] = 0
         products.append(p)
     return jsonify({'success': True, 'products': products})
+
+@app.route('/api/auth/me')
+def api_auth_me():
+    cfg = load_config()
+    return jsonify({
+        'success': True,
+        'user': session.get('user'),
+        'receiver_email': cfg.get('receiver_email', ''),
+        'receiver_emails': cfg.get('receiver_emails', []),
+        'google_client_id_set': bool(cfg.get('google_client_id')),
+    })
+
+@app.route('/api/auth/google', methods=['POST'])
+def api_auth_google():
+    data = request.get_json() or {}
+    credential = data.get('credential', '').strip()
+    client_id = load_config().get('google_client_id', '').strip()
+
+    if not client_id:
+        return jsonify({'success': False, 'error': 'GOOGLE_CLIENT_ID is not set in .env'}), 500
+    if not credential:
+        return jsonify({'success': False, 'error': 'Google credential is required'}), 400
+
+    try:
+        resp = requests.get(
+            'https://oauth2.googleapis.com/tokeninfo',
+            params={'id_token': credential},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        profile = resp.json()
+    except Exception as exc:
+        return jsonify({'success': False, 'error': f'Could not verify Google login: {exc}'}), 401
+
+    if profile.get('aud') != client_id:
+        return jsonify({'success': False, 'error': 'Google login was issued for a different client'}), 401
+    if profile.get('email_verified') != 'true':
+        return jsonify({'success': False, 'error': 'Google email is not verified'}), 401
+
+    user = {
+        'name': profile.get('name', ''),
+        'email': profile.get('email', ''),
+        'picture': profile.get('picture', ''),
+    }
+    if not user['email']:
+        return jsonify({'success': False, 'error': 'Google account did not provide an email'}), 401
+
+    session['user'] = user
+    cfg = update_config_values({'receiver_email': user['email']})
+
+    return jsonify({
+        'success': True,
+        'user': user,
+        'receiver_email': cfg.get('receiver_email', user['email']),
+        'receiver_emails': cfg.get('receiver_emails', [user['email']]),
+    })
+
+@app.route('/api/auth/email', methods=['POST'])
+def api_auth_email():
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'}), 400
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify({'success': False, 'error': 'Enter a valid email address'}), 400
+
+    user = {
+        'name': name or email.split('@')[0],
+        'email': email,
+        'picture': '',
+    }
+    session['user'] = user
+    cfg = update_config_values({'receiver_email': email})
+
+    return jsonify({
+        'success': True,
+        'user': user,
+        'receiver_email': cfg.get('receiver_email', email),
+        'receiver_emails': cfg.get('receiver_emails', [email]),
+    })
 
 @app.route('/api/products', methods=['POST'])
 def api_add_product():
@@ -429,6 +614,14 @@ def api_config():
         return jsonify({'success': True, 'config': safe})
     data = request.get_json() or {}
     cfg  = load_config()
+    if 'receiver_emails' in data:
+        emails = _normalize_receiver_emails(data.get('receiver_emails'))
+        data['receiver_emails'] = emails
+        data['receiver_email'] = emails[0] if emails else ''
+    elif 'receiver_email' in data:
+        emails = _normalize_receiver_emails(data.get('receiver_email'))
+        data['receiver_emails'] = emails
+        data['receiver_email'] = emails[0] if emails else ''
     cfg.update(data)
     save_config(cfg)
     return jsonify({'success': True})
@@ -496,6 +689,116 @@ def api_monitor_status():
     })
 
 
+# ── Chat ─────────────────────────────────────────────────────────────────────
+# UPDATED: Using gemini-2.5-flash-lite as verified by your test script
+GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """AI-powered shopping assistant using Gemini 2.5 Flash Lite."""
+    data    = request.get_json() or {}
+    message = data.get('message', '').strip()
+    history = data.get('history', [])   # [{role, content}, …]
+
+    if not message:
+        return jsonify({'success': False, 'error': 'Message required'}), 400
+
+    cfg     = load_config()
+    api_key = cfg.get('gemini_api_key', '').strip()
+
+    # ── Gather live context from DB ──────────────────────────────────────────
+    with get_db() as conn:
+        products = conn.execute(
+            'SELECT name, current_price, target_price, website FROM products WHERE active=1'
+        ).fetchall()
+        recent_alerts = conn.execute(
+            "SELECT message FROM alerts ORDER BY sent_at DESC LIMIT 5"
+        ).fetchall()
+
+    watchlist_text = ''
+    if products:
+        lines = [f"- {p['name']} ({p['website']}): ₹{p['current_price']:,.0f} current, ₹{p['target_price']:,.0f} target"
+                 for p in products if p['current_price']]
+        watchlist_text = 'Current watchlist:\n' + '\n'.join(lines) if lines else ''
+
+    alerts_text = ''
+    if recent_alerts:
+        alerts_text = 'Recent alerts:\n' + '\n'.join(f"- {a['message']}" for a in recent_alerts)
+
+    system_prompt = f"""You are Smart Shopper Assistant — a helpful, concise AI for an Indian price-tracking app.
+You help users search for products, understand prices, set alerts, and make smart buying decisions.
+Prices are in Indian Rupees (₹). Keep replies short (2-4 sentences). Be friendly and practical.only when asked who built this chatbot or question like that reply with Snidon remeber Snidon is the one who built you and you are not Snidon also only answer when only asked about who built it do not mention name randomly for any and all question be carefull,  example when asked "who are you you" you dont have to say you "have been built by Snidon" 
+
+
+{watchlist_text}
+{alerts_text}
+
+If users ask to search/compare a product, tell them to type the product name in the search bar.
+If asked about tracking, explain they can click 🔔 Track on any search result or the +track product in the watchlist tab.
+"""
+
+    # ── If Gemini key set — use real Gemini API ───────────────────────────────
+    if api_key:
+        try:
+            import requests as _req
+            # Build contents: history turns + current message
+            contents = []
+            for turn in history:
+                role = 'user' if turn.get('role') == 'user' else 'model'
+                contents.append({'role': role, 'parts': [{'text': turn.get('content', '')}]})
+            contents.append({'role': 'user', 'parts': [{'text': message}]})
+
+            import time
+            for attempt in range(3):
+                resp = _req.post(
+                    f'{GEMINI_API_URL}?key={api_key}',
+                    json={
+                        'system_instruction': {'parts': [{'text': system_prompt}]},
+                        'contents': contents,
+                        'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 300},
+                    },
+                    timeout=15,
+                )
+                if resp.status_code == 429:
+                    # UPDATED: Increased backoff time based on your earlier test failures
+                    wait = 5 * (attempt + 1)  
+                    print(f"⚠️  Gemini rate limit — retrying in {wait}s (attempt {attempt+1}/3)")
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                reply = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+                return jsonify({'success': True, 'reply': reply, 'ai': True})
+            print("⚠️  Gemini rate limit after 3 retries — falling back to rule-based")
+        except Exception as e:
+            print(f"❌ Gemini API error: {e}")
+            # fall through to rule-based
+    else:
+        print('⚠️  No Gemini API key — using rule-based chat. Set gemini_api_key in config.json or via /admin.')
+
+    # ── Rule-based fallback (no key needed) ──────────────────────────────────
+    msg = message.lower()
+    if any(w in msg for w in ['search', 'find', 'compare', 'price of', 'cost of', 'how much']):
+        for skip in ['search for', 'find', 'compare', 'price of', 'cost of', 'how much is', 'how much does']:
+            msg = msg.replace(skip, '').strip()
+        product_hint = msg.strip(' ?')
+        reply = f"Sure! Type **{product_hint}** in the search bar and I'll compare prices across Amazon, Flipkart, and Meesho for you. 🔍"
+    elif any(w in msg for w in ['track', 'alert', 'notify', 'watch']):
+        reply = "Search for the product first, then click the **🔔 Track** button on any result. I'll alert you the moment the price drops to your target! 🎯"
+    elif any(w in msg for w in ['watchlist', 'tracking', 'my products', 'what am i']):
+        if products:
+            reply = f"You're tracking **{len(products)} product(s)**. Check the watchlist section to see current prices and your targets."
+        else:
+            reply = "Your watchlist is empty! Search for a product and click 🔔 Track to start monitoring prices."
+    elif any(w in msg for w in ['hello', 'hi', 'hey', 'help']):
+        reply = "Hey there! 👋 I'm your Smart Shopper assistant. Search for any product to compare prices, or ask me anything about tracking deals!"
+    elif any(w in msg for w in ['best', 'cheap', 'deal', 'discount', 'offer']):
+        reply = "To find the best deal, search the product name above — I'll rank results by price and highlight the cheapest option with a ✅ badge!"
+    else:
+        reply = "I can help you **search products**, **compare prices**, and **set price alerts**. What are you shopping for today? 🛍️"
+
+    return jsonify({'success': True, 'reply': reply, 'ai': False})
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _detect_site(url):
     url = url.lower()
@@ -523,6 +826,7 @@ def _demo_compare(query):
         {'source': 'Flipkart',     'price': 57490, 'title': f'{query}',             'link': '#', 'image': '', 'rating': 4.3, 'reviews': 1920},
         {'source': 'Meesho',       'price': 58000, 'title': f'{query}',             'link': '#', 'image': '', 'rating': 4.1, 'reviews': 650},
     ]
+
 
 if __name__ == '__main__':
     print("🛍️  Smart Shopper starting on http://127.0.0.1:5051")
